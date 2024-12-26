@@ -101,7 +101,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 				case .message:
 					handlePayloadMessage(context: context, message: message)
 				case .closeConsumer:
-					handleClosed(consumerID: message.command.closeConsumer.consumerID)
+					handleClosedConsumer(consumerID: message.command.closeConsumer.consumerID)
 				case .error:
 					// The server can return an Error command with a message inside
 					let errorCmd = message.command.error
@@ -111,11 +111,11 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 					throw PulsarClientError.unsupportedMessageType
 			}
 		} catch {
-			handleReadError(context: context, error: error)
+			manageErrors(context: context, error: error)
 		}
 	}
 
-	func handleReadError(context: ChannelHandlerContext, error: Error) {
+	func manageErrors(context: ChannelHandlerContext, error: Error) {
 		logger.error("Error during channelRead: \(error)")
 
 		// Fail any big pending promise (like the connectionEstablished) if it’s not done
@@ -179,24 +179,6 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		context.fireErrorCaught(PulsarClientError.unknownError)
 	}
 
-	func connect(context: ChannelHandlerContext) {
-		logger.debug("Connecting...")
-		var baseCommand = Pulsar_Proto_BaseCommand()
-		baseCommand.type = .connect
-
-		var connectCommand = Pulsar_Proto_CommandConnect()
-		connectCommand.clientVersion = "Pulsar-Client-Swift-1.0.0"
-		connectCommand.protocolVersion = 21
-		baseCommand.connect = connectCommand
-
-		let pulsarMessage = PulsarMessage(command: baseCommand)
-		let promise = makePromise(context: context, type: .generic("connect"))
-		correlationMap.add(promise: .generic("connect"), promiseValue: promise)
-		correlationMap.beginConnection(promise: promise)
-
-		context.writeAndFlush(wrapOutboundOut(pulsarMessage), promise: nil)
-	}
-
 	func handlePing(context: ChannelHandlerContext, message _: Pulsar_Proto_CommandPing) {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .pong
@@ -252,60 +234,56 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		}
 	}
 
-	func acknowledge(context: ChannelHandlerContext, message: PulsarMessage) {
-		var baseCommand = Pulsar_Proto_BaseCommand()
-		baseCommand.type = .ack
-		var ackCmd = Pulsar_Proto_CommandAck()
-		ackCmd.messageID = [message.command.message.messageID]
-		ackCmd.consumerID = message.command.message.consumerID
-		ackCmd.ackType = .individual
-		baseCommand.ack = ackCmd
-		let pulsarMessage = PulsarMessage(command: baseCommand)
-		context.writeAndFlush(wrapOutboundOut(pulsarMessage), promise: nil)
-	}
-
-	/// The broker told us the consumer is being closed. We can fail the stream and (optionally) try re-subscribing.
-	func handleClosed(consumerID: UInt64) {
-		guard let consumerCache = consumers[consumerID] else {
-			logger.warning("Received closeConsumer for unknown consumerID \(consumerID)")
+	func handleLookupResponse(context: ChannelHandlerContext, message: Pulsar_Proto_CommandLookupTopicResponse) {
+		guard let promise = correlationMap.remove(promise: .id(message.requestID)) else {
+			logger.error("Lookup response received for unknown request ID \(message.requestID)")
+			manageErrors(context: context, error: PulsarClientError.topicLookupFailed)
 			return
 		}
-		let consumer = consumerCache.consumer
-		logger.warning("Server closed consumerID \(consumerID) for topic \(consumer.topic)")
 
-		// Optional: attempt a re-subscribe
-		Task {
-			do {
-				logger.info("Attempting to re-subscribe consumer for \(consumer.topic)...")
-				_ = try await client.consumer(topic: consumer.topic, subscription: consumer.subscriptionName, subscriptionType: .shared)
-				logger.info("Successfully re-subscribed \(consumer.topic)")
-			} catch {
-				logger.error("Re-subscribe failed for \(consumer.topic): \(error)")
+		if message.response == .connect {
+			// Means we can connect directly
+			correlationMap.addRedirectURL(nil, isAuthorative: message.authoritative)
+		} else if message.response == .redirect {
+			// Means we must re-connect to the brokerServiceURL
+			correlationMap.addRedirectURL(message.brokerServiceURL, isAuthorative: message.authoritative)
+		} else if message.response == .failed {
+			// Something bigger is broken; fail the entire promise and try to reconnect the channel
+			guard let ipAddress = context.channel.remoteAddress?.ipAddress else {
+				context.fireChannelInactive()
+				return
 			}
+			Task {
+				await client.handleChannelInactive(ipAddress: ipAddress, handler: self)
+			}
+			promise.fail(PulsarClientError.topicLookupFailed)
+			// Continue normal pipeline behavior
+			context.fireChannelInactive()
+
+			return
 		}
+
+		promise.succeed()
 	}
 
-	// MARK: - Closing Consumers
+	// MARK: - General methods
 
-	func closeConsumer(consumerID: UInt64) async throws {
+	func connect(context: ChannelHandlerContext) {
+		logger.debug("Connecting...")
 		var baseCommand = Pulsar_Proto_BaseCommand()
-		baseCommand.type = .closeConsumer
-		var closeCmd = Pulsar_Proto_CommandCloseConsumer()
-		let requestID = UInt64.random(in: 0 ..< UInt64.max)
-		closeCmd.consumerID = consumerID
-		closeCmd.requestID = requestID
+		baseCommand.type = .connect
 
-		let promise = makePromise(context: correlationMap.context!, type: .id(requestID))
-		correlationMap.add(promise: .id(requestID), promiseValue: promise)
+		var connectCommand = Pulsar_Proto_CommandConnect()
+		connectCommand.clientVersion = "Pulsar-Client-Swift-1.0.0"
+		connectCommand.protocolVersion = 21
+		baseCommand.connect = connectCommand
 
-		baseCommand.closeConsumer = closeCmd
 		let pulsarMessage = PulsarMessage(command: baseCommand)
+		let promise = makePromise(context: context, type: .generic("connect"))
+		correlationMap.add(promise: .generic("connect"), promiseValue: promise)
+		correlationMap.beginConnection(promise: promise)
 
-		try await correlationMap.context!.eventLoop.submit {
-			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
-		}.get()
-
-		try await promise.futureResult.get()
+		context.writeAndFlush(wrapOutboundOut(pulsarMessage), promise: nil)
 	}
 
 	// MARK: - Topic Lookup
@@ -343,116 +321,5 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 			return ("", redirectResponse.1)
 		}
 		throw PulsarClientError.topicLookupFailed
-	}
-
-	func handleLookupResponse(context: ChannelHandlerContext, message: Pulsar_Proto_CommandLookupTopicResponse) {
-		guard let promise = correlationMap.remove(promise: .id(message.requestID)) else {
-			logger.error("Lookup response received for unknown request ID \(message.requestID)")
-			handleReadError(context: context, error: PulsarClientError.topicLookupFailed)
-			return
-		}
-
-		if message.response == .connect {
-			// Means we can connect directly
-			correlationMap.addRedirectURL(nil, isAuthorative: message.authoritative)
-		} else if message.response == .redirect {
-			// Means we must re-connect to the brokerServiceURL
-			correlationMap.addRedirectURL(message.brokerServiceURL, isAuthorative: message.authoritative)
-		} else if message.response == .failed {
-			// Something bigger is broken; fail the entire promise and try to reconnect the channel
-			guard let ipAddress = context.channel.remoteAddress?.ipAddress else {
-				context.fireChannelInactive()
-				return
-			}
-			Task {
-				await client.handleChannelInactive(ipAddress: ipAddress, handler: self)
-			}
-			promise.fail(PulsarClientError.topicLookupFailed)
-			// Continue normal pipeline behavior
-			context.fireChannelInactive()
-
-			return
-		}
-
-		promise.succeed()
-	}
-
-	// MARK: - Subscribing
-
-	func subscribe(topic: String,
-	               subscription: String,
-	               consumerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
-	               existingConsumer: PulsarConsumer? = nil,
-	               subscriptionType: SubscriptionType,
-	               subscriptionMode: SubscriptionMode) async throws -> PulsarConsumer {
-		var baseCommand = Pulsar_Proto_BaseCommand()
-		baseCommand.type = .subscribe
-		var subscribeCmd = Pulsar_Proto_CommandSubscribe()
-		subscribeCmd.topic = topic
-		subscribeCmd.subscription = subscription
-		let requestID = UInt64.random(in: 0 ..< UInt64.max)
-		subscribeCmd.requestID = requestID
-		subscribeCmd.subType = switch subscriptionType {
-			case .exclusive:
-				.exclusive
-			case .failover:
-				.failover
-			case .keyShared:
-				.keyShared
-			case .shared:
-				.shared
-		}
-		subscribeCmd.consumerID = consumerID
-
-		let promise = makePromise(context: correlationMap.context!, type: .id(requestID))
-		correlationMap.add(promise: .id(requestID), promiseValue: promise)
-
-		baseCommand.subscribe = subscribeCmd
-		let pulsarMessage = PulsarMessage(command: baseCommand)
-
-		// We add the consumer to the pool before connection, so in case the subscription attempt fails and we
-		// need to reconnect, we already know the consumers we wanted.
-		let consumer = existingConsumer ?? PulsarConsumer(
-			handler: self,
-			consumerID: consumerID,
-			topic: topic,
-			subscriptionName: subscription,
-			subscriptionType: subscriptionType,
-			subscriptionMode: subscriptionMode
-		)
-		consumers[consumerID] = ConsumerCache(consumerID: consumerID, consumer: consumer)
-
-		// Write/flush on the event loop, can be called externally, so we must put it on the eventLoop explicitly.
-		try await correlationMap.context!.eventLoop.submit {
-			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
-		}.get()
-
-		// Wait for the broker to respond with success (or error)
-		try await promise.futureResult.get()
-
-		// Create the consumer object and track it
-		logger.info("Successfully subscribed to \(topic) with subscription: \(subscription)")
-
-		// Issue initial flow permit
-		try await correlationMap.context!.eventLoop.submit {
-			self.flow(consumerID: consumerID, isInitial: true)
-		}.get()
-
-		return consumer
-	}
-
-	/// Permit new flow from broker to consumer.
-	/// - Parameters:
-	///   - consumerID: The id of the consumer to permit the message flow to.
-	///   - isInitial: If it's initial request we request 1000, otherwise 500 more as per Pulsar protocol.
-	func flow(consumerID: UInt64, isInitial: Bool = false) {
-		var baseCommand = Pulsar_Proto_BaseCommand()
-		baseCommand.type = .flow
-		var flowCmd = Pulsar_Proto_CommandFlow()
-		flowCmd.messagePermits = isInitial ? 1000 : 500
-		flowCmd.consumerID = consumerID
-		baseCommand.flow = flowCmd
-		let pulsarMessage = PulsarMessage(command: baseCommand)
-		correlationMap.context?.writeAndFlush(wrapOutboundOut(pulsarMessage), promise: nil)
 	}
 }
