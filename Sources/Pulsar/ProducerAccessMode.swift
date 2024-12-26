@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// The access mode of the Producer.
 public enum ProducerAccessMode: Sendable, Codable {
 	case shared
 	case exclusive

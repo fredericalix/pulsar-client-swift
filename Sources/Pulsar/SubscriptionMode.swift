@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// The subscription mode of the Consumer.
 public enum SubscriptionMode: Codable, Sendable {
 	case durable
 	case nonDurable

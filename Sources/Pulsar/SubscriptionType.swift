@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// The subscription type of the Consumer.
 public enum SubscriptionType: Codable, Sendable {
 	case exclusive
 	case shared

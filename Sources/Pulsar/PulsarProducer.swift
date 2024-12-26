@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// A Pulsar producer, used to publish messages to a topic.
 public final class PulsarProducer: Sendable {
 	let handler: PulsarClientHandler
 	let producerID: UInt64
@@ -28,7 +29,13 @@ public final class PulsarProducer: Sendable {
 			await self.producerCache.setProducerName(producerName)
 		}
 	}
-
+	
+	/// Send messages synchronously.
+	/// - Parameter message: The message to send.
+	///
+	/// Although this method is called `syncSend`, it is asynchronous. In the context of Pulsar, `syncSend` means
+	/// we wait for an answer of the broker before returning this method. To prevent blocking the thread and "only" suspend execution
+	/// till this answer is received, this method is asynchronous.
 	public func syncSend(message: Message) async throws {
 		await producerCache.increaseSequenceID()
 		let producerName = await producerCache.getProducerName()!

@@ -18,3 +18,4 @@ This documentation does not provide a comprehensive overview of the Pulsr functi
 
 - ``PulsarClient``
 - ``PulsarConsumer``
+- ``PulsarProducer``

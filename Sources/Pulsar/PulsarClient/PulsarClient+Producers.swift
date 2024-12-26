@@ -13,6 +13,18 @@
 // limitations under the License.
 
 public extension PulsarClient {
+
+	/// Creates a new Pulsar producer.
+	/// - Parameters:
+	///   - topic: The topic to produce to.
+	///   - accessMode: The access mode of the producer.
+	///   - producerID: Optional: If you want to define your own producerID.
+	///   - producerName: The name of the producer. Gets auto-assigned by the server when left empty.
+	///   - connectionString: Not recommended:  Define another URL where the topic will be found. Can cause issues with connection.
+	///   - existingProducer: Not recommended: Reuse an existing producer.
+	/// - Returns: The newly created producer.
+	///
+	/// - Warning: `connectionString` and `existingProducer` are there for internal implementation and shouldn't be used by the library user.
 	func producer(
 		topic: String,
 		accessMode: ProducerAccessMode,

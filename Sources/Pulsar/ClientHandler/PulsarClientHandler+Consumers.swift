@@ -134,7 +134,6 @@ extension PulsarClientHandler {
 		let consumer = consumerCache.consumer
 		logger.warning("Server closed consumerID \(consumerID) for topic \(consumer.topic)")
 
-		// Optional: attempt a re-subscribe
 		Task {
 			do {
 				logger.info("Attempting to re-subscribe consumer for \(consumer.topic)...")
