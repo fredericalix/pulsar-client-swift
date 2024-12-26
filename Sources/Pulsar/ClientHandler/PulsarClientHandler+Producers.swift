@@ -62,7 +62,7 @@ extension PulsarClientHandler {
 		}
 	}
 
-	func send(message: Message, producerID: UInt64, producerName: String) async throws {
+	func send(message: Message, producerID: UInt64, producerName: String, isSyncSend: Bool) async throws {
 		let data = message.data
 		let payload = ByteBuffer(data: data)
 		var baseCmd = Pulsar_Proto_BaseCommand()
@@ -78,13 +78,20 @@ extension PulsarClientHandler {
 		msgMetadata.sequenceID = sequenceID
 		msgMetadata.publishTime = UInt64(Date().timeIntervalSince1970 * 1000)
 		msgMetadata.properties = []
-		let promise = makePromise(context: correlationMap.context!, type: .send(producerID: producerID, sequenceID: sequenceID))
-		correlationMap.add(promise: .send(producerID: producerID, sequenceID: sequenceID), promiseValue: promise)
+		var promise: EventLoopPromise<Void>?
+		if isSyncSend {
+			promise = makePromise(context: correlationMap.context!, type: .send(producerID: producerID, sequenceID: sequenceID))
+			// We just instantiated a promise, so it is there.
+			correlationMap.add(promise: .send(producerID: producerID, sequenceID: sequenceID), promiseValue: promise!)
+		}
 		let message = PulsarMessage(command: baseCmd, messageMetadata: msgMetadata, payload: payload)
 		try await correlationMap.context!.eventLoop.submit {
 			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(message), promise: nil)
 		}.get()
-		try await promise.futureResult.get()
+		if isSyncSend {
+			// We are sure the promise is not null because it got added in the i-block with the same condition before.
+			try await promise!.futureResult.get()
+		}
 	}
 
 	func createProducer(topic: String,

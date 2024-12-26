@@ -13,7 +13,6 @@
 // limitations under the License.
 
 public extension PulsarClient {
-
 	/// Creates a new Pulsar producer.
 	/// - Parameters:
 	///   - topic: The topic to produce to.

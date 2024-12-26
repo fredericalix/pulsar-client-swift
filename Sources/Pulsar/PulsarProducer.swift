@@ -29,17 +29,30 @@ public final class PulsarProducer: Sendable {
 			await self.producerCache.setProducerName(producerName)
 		}
 	}
-	
+
 	/// Send messages synchronously.
 	/// - Parameter message: The message to send.
 	///
 	/// Although this method is called `syncSend`, it is asynchronous. In the context of Pulsar, `syncSend` means
 	/// we wait for an answer of the broker before returning this method. To prevent blocking the thread and "only" suspend execution
 	/// till this answer is received, this method is asynchronous.
+	///
+	/// When we don't get an answer in the timeout, this method throws. For a version that does not care about timeouts, use ``PulsarProducer/asyncSend(message:)``.
 	public func syncSend(message: Message) async throws {
 		await producerCache.increaseSequenceID()
 		let producerName = await producerCache.getProducerName()!
-		try await handler.send(message: message, producerID: producerID, producerName: producerName)
+		try await handler.send(message: message, producerID: producerID, producerName: producerName, isSyncSend: true)
+	}
+
+	/// Send messages asynchronously.
+	/// - Parameter message: The message to send.
+	///
+	/// This method does not wait for a response from the server before returning, so should generally be faster. Also, this method does not throw when
+	/// there is no response from the server after the timeout. Use ``PulsarProducer/syncSend(message:)`` if you want this behaviour.
+	public func asyncSend(message: Message) async throws {
+		await producerCache.increaseSequenceID()
+		let producerName = await producerCache.getProducerName()!
+		try await handler.send(message: message, producerID: producerID, producerName: producerName, isSyncSend: false)
 	}
 }
 
