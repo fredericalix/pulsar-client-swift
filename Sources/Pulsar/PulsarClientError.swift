@@ -23,4 +23,6 @@ public enum PulsarClientError: Error {
 	case invalidFrame
 	case connectionTimeout
 	case checksumMismatch
+	case consumerFailed
+	case producerFailed
 }

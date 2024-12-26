@@ -48,6 +48,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 	enum PromiseType: Hashable {
 		case generic(String)
 		case id(UInt64)
+		case send(producerID: UInt64, sequenceID: UInt64)
 	}
 
 	enum ConnectionState {
@@ -105,6 +106,10 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 					handleClosedConsumer(consumerID: message.command.closeConsumer.consumerID)
 				case .producerSuccess:
 					handleProducerSuccess(context: context, message: message.command.producerSuccess)
+				case .sendReceipt:
+					handleSendReceipt(context: context, message: message.command.sendReceipt)
+				case .closeProducer:
+					handleClosedProducer(producerID: message.command.closeConsumer.consumerID)
 				case .error:
 					// The server can return an Error command with a message inside
 					let errorCmd = message.command.error

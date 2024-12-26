@@ -23,6 +23,7 @@ extension PulsarClient {
 		}
 
 		let oldConsumers = handler.consumers
+		let oldProducers = handler.producers
 		logger.warning("Channel inactive for \(ipAddress). Initiating reconnection...")
 		isReconnecting.insert(ipAddress)
 
@@ -43,6 +44,7 @@ extension PulsarClient {
 
 				// Reattach consumers after reconnecting
 				try await reattachConsumers(oldConsumers: oldConsumers, host: remoteAddress)
+				try await reattachProducers(oldProducers: oldProducers, host: remoteAddress)
 				isReconnecting.remove(ipAddress)
 				logger.info("Reconnected to \(remoteAddress) after \(attempt) attempt(s).")
 				break
@@ -51,6 +53,37 @@ extension PulsarClient {
 				let delay = backoff.delay(forAttempt: attempt)
 				logger.warning("Will retry in \(Double(delay.nanoseconds) / 1_000_000_000) second(s).")
 				try? await Task.sleep(nanoseconds: UInt64(delay.nanoseconds))
+			}
+		}
+	}
+
+	private func reattachProducers(
+		oldProducers: [UInt64: ProducerCache],
+		host: String
+	) async throws {
+		guard let _ = connectionPool[host] else {
+			throw PulsarClientError.topicLookupFailed
+		}
+		logger.debug("Re-attaching \(oldProducers.count) producers...")
+		for (_, producerCache) in oldProducers {
+			let oldProducer = producerCache.producer
+			let topic = oldProducer.topic
+			let accessMode = oldProducer.accessMode
+			let producerID = oldProducer.producerID
+
+			logger.info("Re-subscribing producerID \(producerCache.producerID) for topic \(topic)")
+
+			do {
+				_ = try await producer(
+					topic: topic,
+					accessMode: accessMode,
+					producerID: producerID,
+					connectionString: host,
+					existingProducer: oldProducer
+				)
+			} catch {
+				logger.error("Failed to re-subscribe producer for topic \(topic): \(error)")
+				throw PulsarClientError.producerFailed
 			}
 		}
 	}
@@ -85,7 +118,7 @@ extension PulsarClient {
 				)
 			} catch {
 				logger.error("Failed to re-subscribe consumer for topic \(topic): \(error)")
-				throw PulsarClientError.consumerClosed
+				throw PulsarClientError.consumerFailed
 			}
 		}
 	}

@@ -49,7 +49,18 @@ struct PulsarExample {
 			}
 		}
 
-		let producer = try await client.producer(topic: "persistent://public/default/my-topic2")
+		let producer = try await client.producer(topic: "persistent://public/default/my-topic1", accessMode: .shared)
+		Task {
+			while true {
+				do {
+					let testMsg = "Hello from Swift".data(using: .utf8)!
+					try await producer.syncSend(message: Message(data: testMsg))
+					try await Task.sleep(for: .seconds(1))
+				} catch {
+					fatalError("We got a timeout on send")
+				}
+			}
+		}
 
 		let keepAlivePromise = eventLoopGroup.next().makePromise(of: Void.self)
 		try await keepAlivePromise.futureResult.get()

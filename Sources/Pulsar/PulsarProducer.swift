@@ -16,26 +16,41 @@ public final class PulsarProducer: Sendable {
 	let handler: PulsarClientHandler
 	let producerID: UInt64
 	let topic: String
-	let producerName = ProducerNameActor()
+	let producerCache = ProducerCacheActor()
+	let accessMode: ProducerAccessMode
 
-	init(handler: PulsarClientHandler, producerID: UInt64, topic: String, producerName: String? = nil) {
+	init(handler: PulsarClientHandler, producerAccessMode: ProducerAccessMode, producerID: UInt64, topic: String, producerName: String? = nil) {
 		self.handler = handler
 		self.producerID = producerID
 		self.topic = topic
+		accessMode = producerAccessMode
 		Task {
-			await self.producerName.set(producerName)
+			await self.producerCache.setProducerName(producerName)
 		}
+	}
+
+	public func syncSend(message: Message) async throws {
+		await producerCache.increaseSequenceID()
+		let producerName = await producerCache.getProducerName()!
+		try await handler.send(message: message, producerID: producerID, producerName: producerName)
 	}
 }
 
-actor ProducerNameActor {
+actor ProducerCacheActor {
 	var producerName: String?
+	var sequenceID: UInt64 = 0
 
-	func set(_ producerName: String?) {
+	func setProducerName(_ producerName: String?) {
 		self.producerName = producerName
 	}
 
-	func get() -> String? {
+	func getProducerName() -> String? {
 		producerName
+	}
+
+	@discardableResult
+	func increaseSequenceID() -> UInt64 {
+		sequenceID += 1
+		return sequenceID
 	}
 }

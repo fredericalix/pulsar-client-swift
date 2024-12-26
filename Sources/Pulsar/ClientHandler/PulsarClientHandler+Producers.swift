@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import Foundation
 import NIOCore
+import NIOFoundationCompat
 
 extension PulsarClientHandler {
 	func handleProducerSuccess(context _: ChannelHandlerContext, message: Pulsar_Proto_CommandProducerSuccess) {
@@ -21,13 +23,68 @@ extension PulsarClientHandler {
 		// producer but doesn't tell us the producer id, so we need to find our producer based on the request id.
 		let producerID = producers.map { ($0.value.producerID, $0.value.createRequestID) }.filter { $0.1 == requestID }.first!.0
 		Task {
-			await producers[producerID]!.producer.producerName.set(message.producerName)
+			await producers[producerID]!.producer.producerCache.setProducerName(message.producerName)
 		}
 
 		if let promise = correlationMap.remove(promise: .id(message.requestID)) {
 			logger.debug("Success for requestID \(message.requestID)")
 			promise.succeed()
 		}
+	}
+
+	func handleSendReceipt(context _: ChannelHandlerContext, message: Pulsar_Proto_CommandSendReceipt) {
+		let producerID = message.producerID
+		let sequenceID = message.sequenceID
+
+		if let promise = correlationMap.remove(promise: .send(producerID: producerID, sequenceID: sequenceID)) {
+			logger.debug("Success for send with producerID: \(producerID) and sequenceID: \(sequenceID).")
+			promise.succeed()
+		}
+	}
+
+	func handleClosedProducer(producerID: UInt64) {
+		guard let producerCache = producers[producerID] else {
+			logger.warning("Received closeProducer for unknown producerID \(producerID)")
+			return
+		}
+		let producer = producerCache.producer
+		logger.warning("Server closed producerID \(producerID) for topic \(producer.topic)")
+
+		// Optional: attempt a re-subscribe
+		Task {
+			do {
+				logger.info("Attempting to reconnect producer for \(producer.topic)...")
+				_ = try await client.producer(topic: producer.topic, accessMode: producer.accessMode, producerID: producerID, existingProducer: producer)
+				logger.info("Successfully reconnected \(producer.topic)")
+			} catch {
+				logger.error("Reconnect failed for \(producer.topic): \(error)")
+			}
+		}
+	}
+
+	func send(message: Message, producerID: UInt64, producerName: String) async throws {
+		let data = message.data
+		let payload = ByteBuffer(data: data)
+		var baseCmd = Pulsar_Proto_BaseCommand()
+		baseCmd.type = .send
+		var sendCmd = Pulsar_Proto_CommandSend()
+		sendCmd.producerID = producerID
+		let sequenceID = await producers[producerID]!.producer.producerCache.sequenceID
+		sendCmd.sequenceID = sequenceID
+		sendCmd.numMessages = 1
+		baseCmd.send = sendCmd
+		var msgMetadata = Pulsar_Proto_MessageMetadata()
+		msgMetadata.producerName = producerName
+		msgMetadata.sequenceID = sequenceID
+		msgMetadata.publishTime = UInt64(Date().timeIntervalSince1970 * 1000)
+		msgMetadata.properties = []
+		let promise = makePromise(context: correlationMap.context!, type: .send(producerID: producerID, sequenceID: sequenceID))
+		correlationMap.add(promise: .send(producerID: producerID, sequenceID: sequenceID), promiseValue: promise)
+		let message = PulsarMessage(command: baseCmd, messageMetadata: msgMetadata, payload: payload)
+		try await correlationMap.context!.eventLoop.submit {
+			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(message), promise: nil)
+		}.get()
+		try await promise.futureResult.get()
 	}
 
 	func createProducer(topic: String,
@@ -62,6 +119,7 @@ extension PulsarClientHandler {
 		// need to reconnect, we already know the producers we wanted.
 		let producer = existingProducer ?? PulsarProducer(
 			handler: self,
+			producerAccessMode: accessMode,
 			producerID: producerID,
 			topic: topic
 		)
@@ -79,7 +137,7 @@ extension PulsarClientHandler {
 		logger.info("Successfully created producer on \(topic)")
 		#if DEBUG
 			Task {
-				let newProducerName = await producer.producerName.get()
+				let newProducerName = await producer.producerCache.getProducerName()
 				logger.trace("Producer got assigned name \(newProducerName ?? "none"), originally requested was \(producerName ?? "none.")")
 			}
 		#endif

@@ -16,4 +16,8 @@ import Foundation
 
 public struct Message: Sendable {
 	public let data: Data
+
+	public init(data: Data) {
+		self.data = data
+	}
 }

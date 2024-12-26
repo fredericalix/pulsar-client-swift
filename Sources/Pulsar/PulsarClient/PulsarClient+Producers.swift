@@ -15,6 +15,7 @@
 public extension PulsarClient {
 	func producer(
 		topic: String,
+		accessMode: ProducerAccessMode,
 		producerID: UInt64? = nil,
 		producerName: String? = nil,
 		connectionString: String? = nil,
@@ -50,12 +51,13 @@ public extension PulsarClient {
 		let producer: PulsarProducer = if let existingProducer {
 			try await handler.createProducer(
 				topic: topic,
+				accessMode: accessMode,
 				producerName: producerName,
 				producerID: producerID!,
 				existingProducer: existingProducer
 			)
 		} else {
-			try await handler.createProducer(topic: topic, producerName: producerName)
+			try await handler.createProducer(topic: topic, accessMode: accessMode, producerName: producerName)
 		}
 
 		return producer

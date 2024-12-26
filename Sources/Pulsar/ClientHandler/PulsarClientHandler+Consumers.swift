@@ -125,7 +125,7 @@ extension PulsarClientHandler {
 		try await promise.futureResult.get()
 	}
 
-	/// The broker told us the consumer is being closed. We can fail the stream and (optionally) try re-subscribing.
+	/// The broker told us the consumer is being closed. We try re-subscribing.
 	func handleClosedConsumer(consumerID: UInt64) {
 		guard let consumerCache = consumers[consumerID] else {
 			logger.warning("Received closeConsumer for unknown consumerID \(consumerID)")
@@ -138,7 +138,7 @@ extension PulsarClientHandler {
 		Task {
 			do {
 				logger.info("Attempting to re-subscribe consumer for \(consumer.topic)...")
-				_ = try await client.consumer(topic: consumer.topic, subscription: consumer.subscriptionName, subscriptionType: .shared)
+				_ = try await client.consumer(topic: consumer.topic, subscription: consumer.subscriptionName, subscriptionType: .shared, consumerID: consumerID, existingConsumer: consumer)
 				logger.info("Successfully re-subscribed \(consumer.topic)")
 			} catch {
 				logger.error("Re-subscribe failed for \(consumer.topic): \(error)")
