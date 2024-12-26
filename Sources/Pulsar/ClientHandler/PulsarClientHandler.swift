@@ -43,6 +43,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 
 	/// Each consumer is tracked by an ID; storing the consumer object plus any relevant info
 	var consumers: [UInt64: ConsumerCache] = [:]
+	var producers: [UInt64: ProducerCache] = [:]
 
 	enum PromiseType: Hashable {
 		case generic(String)
@@ -102,6 +103,8 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 					handlePayloadMessage(context: context, message: message)
 				case .closeConsumer:
 					handleClosedConsumer(consumerID: message.command.closeConsumer.consumerID)
+				case .producerSuccess:
+					handleProducerSuccess(context: context, message: message.command.producerSuccess)
 				case .error:
 					// The server can return an Error command with a message inside
 					let errorCmd = message.command.error

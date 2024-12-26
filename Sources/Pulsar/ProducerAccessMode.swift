@@ -12,30 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-public final class PulsarProducer: Sendable {
-	let handler: PulsarClientHandler
-	let producerID: UInt64
-	let topic: String
-	let producerName = ProducerNameActor()
-
-	init(handler: PulsarClientHandler, producerID: UInt64, topic: String, producerName: String? = nil) {
-		self.handler = handler
-		self.producerID = producerID
-		self.topic = topic
-		Task {
-			await self.producerName.set(producerName)
-		}
-	}
-}
-
-actor ProducerNameActor {
-	var producerName: String?
-
-	func set(_ producerName: String?) {
-		self.producerName = producerName
-	}
-
-	func get() -> String? {
-		producerName
-	}
+public enum ProducerAccessMode: Sendable, Codable {
+	case shared
+	case exclusive
+	case exclusiveWithFencing
+	case waitForExclusive
 }

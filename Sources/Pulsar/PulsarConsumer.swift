@@ -24,7 +24,7 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 
 	private let stream: AsyncThrowingStream<Message, Error>
 	let continuation: AsyncThrowingStream<Message, Error>.Continuation
-	
+
 	/// Used to consume messages.
 	/// - Returns: The queue where the messages will land.
 	public func makeAsyncIterator() -> AsyncThrowingStream<Message, Error>.AsyncIterator {
@@ -52,7 +52,7 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 		self.subscriptionType = subscriptionType
 		self.subscriptionMode = subscriptionMode
 	}
-	
+
 	/// Close the consumer
 	public func close() async throws {
 		try await handler.closeConsumer(consumerID: consumerID)

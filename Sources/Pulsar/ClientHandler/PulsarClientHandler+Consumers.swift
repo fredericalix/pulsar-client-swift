@@ -1,34 +1,20 @@
+// Copyright 2024 Felix Ruppert
 //
-//  PulsarClientHandler+Consumers.swift
-//  pulsar-client-swift
+// Licensed under the Apache License, Version 2.0 (the License );
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-//  Created by Felix Ruppert on 26.12.24.
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an AS IS BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 import NIOCore
 
 extension PulsarClientHandler {
-	func closeConsumer(consumerID: UInt64) async throws {
-		var baseCommand = Pulsar_Proto_BaseCommand()
-		baseCommand.type = .closeConsumer
-		var closeCmd = Pulsar_Proto_CommandCloseConsumer()
-		let requestID = UInt64.random(in: 0 ..< UInt64.max)
-		closeCmd.consumerID = consumerID
-		closeCmd.requestID = requestID
-
-		let promise = makePromise(context: correlationMap.context!, type: .id(requestID))
-		correlationMap.add(promise: .id(requestID), promiseValue: promise)
-
-		baseCommand.closeConsumer = closeCmd
-		let pulsarMessage = PulsarMessage(command: baseCommand)
-
-		try await correlationMap.context!.eventLoop.submit {
-			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
-		}.get()
-
-		try await promise.futureResult.get()
-	}
-
 	func acknowledge(context: ChannelHandlerContext, message: PulsarMessage) {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .ack
@@ -116,6 +102,27 @@ extension PulsarClientHandler {
 		baseCommand.flow = flowCmd
 		let pulsarMessage = PulsarMessage(command: baseCommand)
 		correlationMap.context?.writeAndFlush(wrapOutboundOut(pulsarMessage), promise: nil)
+	}
+
+	func closeConsumer(consumerID: UInt64) async throws {
+		var baseCommand = Pulsar_Proto_BaseCommand()
+		baseCommand.type = .closeConsumer
+		var closeCmd = Pulsar_Proto_CommandCloseConsumer()
+		let requestID = UInt64.random(in: 0 ..< UInt64.max)
+		closeCmd.consumerID = consumerID
+		closeCmd.requestID = requestID
+
+		let promise = makePromise(context: correlationMap.context!, type: .id(requestID))
+		correlationMap.add(promise: .id(requestID), promiseValue: promise)
+
+		baseCommand.closeConsumer = closeCmd
+		let pulsarMessage = PulsarMessage(command: baseCommand)
+
+		try await correlationMap.context!.eventLoop.submit {
+			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
+		}.get()
+
+		try await promise.futureResult.get()
 	}
 
 	/// The broker told us the consumer is being closed. We can fail the stream and (optionally) try re-subscribing.

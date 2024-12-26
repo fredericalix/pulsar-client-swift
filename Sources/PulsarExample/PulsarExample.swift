@@ -40,14 +40,16 @@ struct PulsarExample {
 					msgCount += 1
 					print("Received message in the exec: \(String(decoding: message.data, as: UTF8.self))")
 					if msgCount == 2 {
-//							try await consumer.close()
-//							print("Closed consumer")
+						try await consumer.close()
+						print("Closed consumer")
 					}
 				}
 			} catch {
 				print("Whooops we closed, this should never happen")
 			}
 		}
+
+		let producer = try await client.producer(topic: "persistent://public/default/my-topic2")
 
 		let keepAlivePromise = eventLoopGroup.next().makePromise(of: Void.self)
 		try await keepAlivePromise.futureResult.get()

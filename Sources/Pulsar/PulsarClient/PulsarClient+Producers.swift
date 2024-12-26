@@ -13,26 +13,12 @@
 // limitations under the License.
 
 public extension PulsarClient {
-	/// Creates a new Pulsar consumer.
-	/// - Parameters:
-	///   - topic: The topic to consume.
-	///   - subscription: The name of the subscription.
-	///   - subscriptionType: The type of the subscription.
-	///   - subscriptionMode: Optional: The mode of the subscription.
-	///   - consumerID: Optional: If you want to define your own consumerID.
-	///   - connectionString: Not recommended:  Define another URL where the topic will be found. Can cause issues with connection.
-	///   - existingConsumer: Not recommended: Reuse an existing consumer.
-	/// - Returns: The newly created consumer.
-	///
-	/// - Warning: `connectionString` and `existingConsumer` are there for internal implementation and shouldn't be used by the library user.
-	func consumer(
+	func producer(
 		topic: String,
-		subscription: String,
-		subscriptionType: SubscriptionType,
-		subscriptionMode: SubscriptionMode = .durable,
-		consumerID: UInt64? = nil,
+		producerID: UInt64? = nil,
+		producerName: String? = nil,
 		connectionString: String? = nil,
-		existingConsumer: PulsarConsumer? = nil) async throws -> PulsarConsumer {
+		existingProducer: PulsarProducer? = nil) async throws -> PulsarProducer {
 		var connectionString = connectionString ?? initialURL
 		var topicFound = false
 
@@ -56,30 +42,22 @@ public extension PulsarClient {
 			}
 		}
 
-		// By now, we have a connection for `connectionString`
 		guard let channel = connectionPool[connectionString] else {
 			throw PulsarClientError.topicLookupFailed
 		}
 		let handler = try await channel.pipeline.handler(type: PulsarClientHandler.self).get()
 
-		let consumer: PulsarConsumer = if let existingConsumer {
-			// We DO NOT want a new consumer. We reattach it by performing the consumer flow again.
-			try await handler.subscribe(
+		let producer: PulsarProducer = if let existingProducer {
+			try await handler.createProducer(
 				topic: topic,
-				subscription: subscription,
-				consumerID: consumerID!,
-				existingConsumer: existingConsumer,
-				subscriptionType: subscriptionType,
-				subscriptionMode: subscriptionMode
+				producerName: producerName,
+				producerID: producerID!,
+				existingProducer: existingProducer
 			)
 		} else {
-			try await handler.subscribe(
-				topic: topic,
-				subscription: subscription,
-				subscriptionType: subscriptionType,
-				subscriptionMode: subscriptionMode
-			)
+			try await handler.createProducer(topic: topic, producerName: producerName)
 		}
-		return consumer
+
+		return producer
 	}
 }
