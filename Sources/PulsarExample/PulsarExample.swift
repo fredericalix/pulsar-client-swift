@@ -37,12 +37,15 @@ struct PulsarExample {
 		Task {
 			do {
 				for try await message in consumer {
-					msgCount += 1
-					print("Received message in the exec: \(String(decoding: message.data, as: UTF8.self))")
-					if msgCount == 2 {
-						try await consumer.close()
-						print("Closed consumer")
-					}
+					// Fix an concurrency false-positive in Swift 5.10 - It's only demo code, so no issue
+					#if compiler(>=6)
+						msgCount += 1
+						print("Received message in the exec: \(String(decoding: message.data, as: UTF8.self))")
+						if msgCount == 2 {
+							try await consumer.close()
+							print("Closed consumer")
+						}
+					#endif
 				}
 			} catch {
 				print("Whooops we closed, this should never happen")
