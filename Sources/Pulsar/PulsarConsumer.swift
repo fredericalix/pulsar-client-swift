@@ -14,7 +14,6 @@
 
 /// A Pulsar Consumer, used to asynchronously consume messages from a topic.
 public final class PulsarConsumer: AsyncSequence, Sendable {
-	let handler: PulsarClientHandler
 	let consumerID: UInt64
 	let autoAcknowledge: Bool
 	let topic: String
@@ -46,12 +45,14 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 		}
 		continuation = cont
 		autoAcknowledge = autoAck
-		self.handler = handler
 		self.consumerID = consumerID
 		self.topic = topic
 		self.subscriptionName = subscriptionName
 		self.subscriptionType = subscriptionType
 		self.subscriptionMode = subscriptionMode
+		Task {
+			await self.stateManager.setHandler(handler)
+		}
 	}
 
 	/// Close the consumer
