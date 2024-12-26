@@ -60,11 +60,12 @@ extension PulsarClientHandler {
 
 		// We add the consumer to the pool before connection, so in case the subscription attempt fails and we
 		// need to reconnect, we already know the consumers we wanted.
-		let consumer: PulsarConsumer = if let existingConsumer {
-			existingConsumer
-
+		let consumer: PulsarConsumer
+		if let existingConsumer {
+			consumer = existingConsumer
+			await consumer.stateManager.setHandler(self)
 		} else {
-			PulsarConsumer(
+			consumer = PulsarConsumer(
 				handler: self,
 				consumerID: consumerID,
 				topic: topic,
