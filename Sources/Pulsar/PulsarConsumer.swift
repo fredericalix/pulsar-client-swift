@@ -21,6 +21,7 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 	let subscriptionName: String
 	let subscriptionType: SubscriptionType
 	let subscriptionMode: SubscriptionMode
+	let stateManager = ConsumerStateHandler()
 
 	private let stream: AsyncThrowingStream<Message, Error>
 	let continuation: AsyncThrowingStream<Message, Error>.Continuation
@@ -55,7 +56,7 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 
 	/// Close the consumer
 	public func close() async throws {
-		try await handler.closeConsumer(consumerID: consumerID)
+		try await stateManager.getHandler().closeConsumer(consumerID: consumerID)
 	}
 
 	func fail(error: Error) {

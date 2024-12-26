@@ -55,7 +55,7 @@ struct PulsarExample {
 				do {
 					let testMsg = "Hello from Swift".data(using: .utf8)!
 					try await producer.asyncSend(message: Message(data: testMsg))
-					try await Task.sleep(for: .seconds(1))
+					try await Task.sleep(for: .seconds(5))
 					print("we try to send a message here")
 				} catch {
 					fatalError("We got a timeout on send")

@@ -71,7 +71,7 @@ extension PulsarClient {
 			let accessMode = oldProducer.accessMode
 			let producerID = oldProducer.producerID
 
-			logger.info("Re-subscribing producerID \(producerCache.producerID) for topic \(topic)")
+			logger.info("Reconnection producerID \(producerCache.producerID) to topic \(topic)")
 
 			do {
 				_ = try await producer(
@@ -82,7 +82,7 @@ extension PulsarClient {
 					existingProducer: oldProducer
 				)
 			} catch {
-				logger.error("Failed to re-subscribe producer for topic \(topic): \(error)")
+				logger.error("Failed to re-attach producer for topic \(topic): \(error)")
 				throw PulsarClientError.producerFailed
 			}
 		}

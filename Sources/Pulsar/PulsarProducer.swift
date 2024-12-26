@@ -14,19 +14,18 @@
 
 /// A Pulsar producer, used to publish messages to a topic.
 public final class PulsarProducer: Sendable {
-	let handler: PulsarClientHandler
 	let producerID: UInt64
 	let topic: String
-	let producerCache = ProducerCacheActor()
+	let stateManager = ProducerStateManager()
 	let accessMode: ProducerAccessMode
 
 	init(handler: PulsarClientHandler, producerAccessMode: ProducerAccessMode, producerID: UInt64, topic: String, producerName: String? = nil) {
-		self.handler = handler
 		self.producerID = producerID
 		self.topic = topic
 		accessMode = producerAccessMode
 		Task {
-			await self.producerCache.setProducerName(producerName)
+			await self.stateManager.setHandler(handler)
+			await self.stateManager.setProducerName(producerName)
 		}
 	}
 
@@ -39,9 +38,9 @@ public final class PulsarProducer: Sendable {
 	///
 	/// When we don't get an answer in the timeout, this method throws. For a version that does not care about timeouts, use ``PulsarProducer/asyncSend(message:)``.
 	public func syncSend(message: Message) async throws {
-		await producerCache.increaseSequenceID()
-		let producerName = await producerCache.getProducerName()!
-		try await handler.send(message: message, producerID: producerID, producerName: producerName, isSyncSend: true)
+		await stateManager.increaseSequenceID()
+		let producerName = await stateManager.getProducerName()!
+		try await stateManager.getHandler().send(message: message, producerID: producerID, producerName: producerName, isSyncSend: true)
 	}
 
 	/// Send messages asynchronously.
@@ -50,27 +49,8 @@ public final class PulsarProducer: Sendable {
 	/// This method does not wait for a response from the server before returning, so should generally be faster. Also, this method does not throw when
 	/// there is no response from the server after the timeout. Use ``PulsarProducer/syncSend(message:)`` if you want this behaviour.
 	public func asyncSend(message: Message) async throws {
-		await producerCache.increaseSequenceID()
-		let producerName = await producerCache.getProducerName()!
-		try await handler.send(message: message, producerID: producerID, producerName: producerName, isSyncSend: false)
-	}
-}
-
-actor ProducerCacheActor {
-	var producerName: String?
-	var sequenceID: UInt64 = 0
-
-	func setProducerName(_ producerName: String?) {
-		self.producerName = producerName
-	}
-
-	func getProducerName() -> String? {
-		producerName
-	}
-
-	@discardableResult
-	func increaseSequenceID() -> UInt64 {
-		sequenceID += 1
-		return sequenceID
+		await stateManager.increaseSequenceID()
+		let producerName = await stateManager.getProducerName()!
+		try await stateManager.getHandler().send(message: message, producerID: producerID, producerName: producerName, isSyncSend: false)
 	}
 }

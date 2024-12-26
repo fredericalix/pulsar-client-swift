@@ -60,14 +60,19 @@ extension PulsarClientHandler {
 
 		// We add the consumer to the pool before connection, so in case the subscription attempt fails and we
 		// need to reconnect, we already know the consumers we wanted.
-		let consumer = existingConsumer ?? PulsarConsumer(
-			handler: self,
-			consumerID: consumerID,
-			topic: topic,
-			subscriptionName: subscription,
-			subscriptionType: subscriptionType,
-			subscriptionMode: subscriptionMode
-		)
+		let consumer: PulsarConsumer = if let existingConsumer {
+			existingConsumer
+
+		} else {
+			PulsarConsumer(
+				handler: self,
+				consumerID: consumerID,
+				topic: topic,
+				subscriptionName: subscription,
+				subscriptionType: subscriptionType,
+				subscriptionMode: subscriptionMode
+			)
+		}
 		consumers[consumerID] = ConsumerCache(consumerID: consumerID, consumer: consumer)
 
 		// Write/flush on the event loop, can be called externally, so we must put it on the eventLoop explicitly.

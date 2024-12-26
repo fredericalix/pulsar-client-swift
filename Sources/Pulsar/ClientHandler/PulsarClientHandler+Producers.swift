@@ -23,7 +23,8 @@ extension PulsarClientHandler {
 		// producer but doesn't tell us the producer id, so we need to find our producer based on the request id.
 		let producerID = producers.map { ($0.value.producerID, $0.value.createRequestID) }.filter { $0.1 == requestID }.first!.0
 		Task {
-			await producers[producerID]!.producer.producerCache.setProducerName(message.producerName)
+			await producers[producerID]!.producer.stateManager.setProducerName(message.producerName)
+			await producers[producerID]!.producer.stateManager.setSequenceID(UInt64(message.lastSequenceID + 1))
 		}
 
 		if let promise = correlationMap.remove(promise: .id(message.requestID)) {
@@ -69,7 +70,7 @@ extension PulsarClientHandler {
 		baseCmd.type = .send
 		var sendCmd = Pulsar_Proto_CommandSend()
 		sendCmd.producerID = producerID
-		let sequenceID = await producers[producerID]!.producer.producerCache.sequenceID
+		let sequenceID = await producers[producerID]!.producer.stateManager.sequenceID
 		sendCmd.sequenceID = sequenceID
 		sendCmd.numMessages = 1
 		baseCmd.send = sendCmd
@@ -124,12 +125,18 @@ extension PulsarClientHandler {
 
 		// We add the producers to the pool before connection, so in case the create attempt fails and we
 		// need to reconnect, we already know the producers we wanted.
-		let producer = existingProducer ?? PulsarProducer(
-			handler: self,
-			producerAccessMode: accessMode,
-			producerID: producerID,
-			topic: topic
-		)
+		let producer: PulsarProducer
+		if let existingProducer {
+			producer = existingProducer
+			await producer.stateManager.setHandler(self)
+		} else {
+			producer = PulsarProducer(
+				handler: self,
+				producerAccessMode: accessMode,
+				producerID: producerID,
+				topic: topic
+			)
+		}
 		producers[producerID] = ProducerCache(producerID: producerID, producer: producer, createRequestID: requestID)
 
 		// Write/flush on the event loop, can be called externally, so we must put it on the eventLoop explicitly.
@@ -144,7 +151,7 @@ extension PulsarClientHandler {
 		logger.info("Successfully created producer on \(topic)")
 		#if DEBUG
 			Task {
-				let newProducerName = await producer.producerCache.getProducerName()
+				let newProducerName = await producer.stateManager.getProducerName()
 				logger.trace("Producer got assigned name \(newProducerName ?? "none"), originally requested was \(producerName ?? "none.")")
 			}
 		#endif

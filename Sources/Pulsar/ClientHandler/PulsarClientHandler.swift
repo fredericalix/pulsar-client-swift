@@ -108,7 +108,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 				case .sendReceipt:
 					handleSendReceipt(context: context, message: message.command.sendReceipt)
 				case .closeProducer:
-					handleClosedProducer(producerID: message.command.closeConsumer.consumerID)
+					handleClosedProducer(producerID: message.command.closeProducer.producerID)
 				case .error:
 					// The server can return an Error command with a message inside
 					let errorCmd = message.command.error
