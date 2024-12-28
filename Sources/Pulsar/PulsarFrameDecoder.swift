@@ -112,7 +112,7 @@ final class PulsarFrameDecoder: ByteToMessageDecoder {
 			}
 
 			// Compute and verify checksum
-			let computedChecksum = CRC32C.checksum(Data(buffer: checksumData))
+			let computedChecksum = CRC32C.checksum(checksumData)
 			guard computedChecksum == checksum else {
 				throw PulsarClientError.checksumMismatch
 			}

@@ -74,7 +74,7 @@ final class PulsarFrameEncoder: MessageToByteEncoder {
 
 			// Compute checksum over everything after checksum field
 			let checksumData = frameBuffer.getSlice(at: checksumStartIndex, length: frameBuffer.writerIndex - checksumStartIndex)!
-			let computedChecksum = CRC32C.checksum(Data(buffer: checksumData))
+			let computedChecksum = CRC32C.checksum(checksumData)
 
 			// Write the checksum into the reserved space
 			frameBuffer.setInteger(computedChecksum, at: checksumIndex)
