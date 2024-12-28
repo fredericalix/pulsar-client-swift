@@ -139,7 +139,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		context.fireErrorCaught(error)
 	}
 
-	func makePromise(context: ChannelHandlerContext, type: PromiseType) -> EventLoopPromise<Void> {
+	func makePromise(context: ChannelHandlerContext, type: PromiseType, forceClose: Bool = true) -> EventLoopPromise<Void> {
 		let promise: EventLoopPromise<Void> = context.eventLoop.makePromise()
 		context.eventLoop.scheduleTask(in: .seconds(5)) { [weak self] in
 			guard let self else {
@@ -151,7 +151,11 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 					self.logger.error("Request timed out.")
 					self.logger.trace("Failing promise for \(type)")
 					promise.fail(PulsarClientError.connectionTimeout)
-					self.correlationMap.context!.close(mode: .all, promise: nil)
+					if forceClose {
+						self.correlationMap.context!.close(mode: .all, promise: nil)
+					} else {
+						self.logger.warning("Timeout on promise for \(type) but not closing connection")
+					}
 				} else {
 					self.logger.trace("Promise for \(type) was already fullfilled.")
 				}
@@ -420,7 +424,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 				// Means server responded with “use the same connection”
 				return ("", redirectResponse.1)
 			} else {
-				throw PulsarClientError.internalError("This should never throw for the user of the library. If it does please open an issue at https://github.com/flexlixrup/pulsar-client-swift/issues")
+				throw PulsarClientError.internalError("This should never throw for the user of the library. If it does, please open an issue at https://github.com/flexlixrup/pulsar-client-swift/issues")
 			}
 		} catch {
 			throw PulsarClientError.connectionError

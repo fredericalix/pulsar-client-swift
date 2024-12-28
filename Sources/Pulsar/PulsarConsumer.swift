@@ -14,7 +14,7 @@
 
 /// A Pulsar Consumer, used to asynchronously consume messages from a topic.
 public final class PulsarConsumer: AsyncSequence, Sendable {
-	let consumerID: UInt64
+	public let consumerID: UInt64
 	let autoAcknowledge: Bool
 	let topic: String
 	let subscriptionName: String

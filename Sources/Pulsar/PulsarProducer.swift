@@ -14,14 +14,16 @@
 
 /// A Pulsar producer, used to publish messages to a topic.
 public final class PulsarProducer: Sendable {
-	let producerID: UInt64
+	public let producerID: UInt64
 	let topic: String
 	let stateManager = ProducerStateManager()
 	let accessMode: ProducerAccessMode
+	public let onClosed: (@Sendable (any Error) -> Void)?
 
-	init(handler: PulsarClientHandler, producerAccessMode: ProducerAccessMode, producerID: UInt64, topic: String, producerName: String? = nil) {
+	init(handler: PulsarClientHandler, producerAccessMode: ProducerAccessMode, producerID: UInt64, topic: String, producerName: String? = nil, onClosed: (@Sendable (any Error) -> Void)?) {
 		self.producerID = producerID
 		self.topic = topic
+		self.onClosed = onClosed
 		accessMode = producerAccessMode
 		Task {
 			await self.stateManager.setHandler(handler)
@@ -43,11 +45,19 @@ public final class PulsarProducer: Sendable {
 		try await stateManager.getHandler().send(message: message, producerID: producerID, producerName: producerName, isSyncSend: true)
 	}
 
+	/// Close the consumer
+	public func close() async throws {
+		try await stateManager.getHandler().closeProducer(producerID: producerID)
+		onClosed?(PulsarClientError.closedByUser)
+	}
+
 	/// Send messages asynchronously.
 	/// - Parameter message: The message to send.
 	///
 	/// This method does not wait for a response from the server before returning, so should generally be faster. Also, this method does not throw when
-	/// there is no response from the server after the timeout. Use ``PulsarProducer/syncSend(message:)`` if you want this behaviour.
+	/// there is no response from the server after the timeout or anything else occurs, so it's fire and forget. Use ``PulsarProducer/syncSend(message:)`` if you do not want this behaviour.
+	///
+	/// - throws: Only throws when there is some major issue going on,
 	public func asyncSend(message: Message) async throws {
 		await stateManager.increaseSequenceID()
 		let producerName = await stateManager.getProducerName()!

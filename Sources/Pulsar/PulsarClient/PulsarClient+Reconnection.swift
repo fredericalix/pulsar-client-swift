@@ -49,6 +49,15 @@ extension PulsarClient {
 				logger.info("Reconnected to \(remoteAddress) after \(attempt) attempt(s).")
 				break
 			} catch {
+				if let reconnectLimit {
+					if attempt >= reconnectLimit {
+						do {
+							try await close()
+						} catch {
+							logger.critical("Closing client failed. Continuing from here has undefined behavior.")
+						}
+					}
+				}
 				logger.error("Reconnection attempt #\(attempt) to \(remoteAddress) failed: \(error)")
 				let delay = backoff.delay(forAttempt: attempt)
 				logger.warning("Will retry in \(Double(delay.nanoseconds) / 1_000_000_000) second(s).")
@@ -70,6 +79,7 @@ extension PulsarClient {
 			let topic = oldProducer.topic
 			let accessMode = oldProducer.accessMode
 			let producerID = oldProducer.producerID
+			let onClosed = oldProducer.onClosed
 
 			logger.info("Reconnection producerID \(producerCache.producerID) to topic \(topic)")
 
@@ -79,10 +89,16 @@ extension PulsarClient {
 					accessMode: accessMode,
 					producerID: producerID,
 					connectionString: host,
-					existingProducer: oldProducer
+					existingProducer: oldProducer,
+					onClosed: onClosed
 				)
 			} catch {
 				logger.error("Failed to re-attach producer for topic \(topic): \(error)")
+
+				// Let the producer close if there is an error which should be handled by the library owner
+				if PulsarClientError.isUserHandledError(error) {
+					oldProducer.onClosed?(error)
+				}
 				throw PulsarClientError.producerFailed
 			}
 		}
@@ -118,6 +134,11 @@ extension PulsarClient {
 				)
 			} catch {
 				logger.error("Failed to re-subscribe consumer for topic \(topic): \(error)")
+
+				// Let the consumer stream throw if the error has to be handled by the user. We don't need an onClosed there because the stream can already fail on its own.
+				if PulsarClientError.isUserHandledError(error) {
+					oldConsumer.fail(error: error)
+				}
 				throw PulsarClientError.consumerFailed
 			}
 		}

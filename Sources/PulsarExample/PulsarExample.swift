@@ -32,7 +32,10 @@ struct PulsarExample {
 	func connect(eventLoopGroup: EventLoopGroup) async throws {
 		var msgCount = 0
 
-		let client = await PulsarClient(host: "localhost", port: 6650)
+		let client = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 10) { _ in
+			print("Client closed")
+			fatalError("We closed")
+		}
 		let consumer = try await client.consumer(topic: "persistent://public/default/my-topic", subscription: "test", subscriptionType: .shared)
 		Task {
 			do {
@@ -48,11 +51,13 @@ struct PulsarExample {
 					#endif
 				}
 			} catch {
-				print("Whooops we closed, this should never happen")
+				print("Whooops we closed, this can happen if we e.g delete the topic")
 			}
 		}
 
-		let producer = try await client.producer(topic: "persistent://public/default/my-topic1", accessMode: .shared)
+		let producer = try await client.producer(topic: "persistent://public/default/my-topic1", accessMode: .shared) { _ in
+			print("Produer closed")
+		}
 		Task {
 			while true {
 				do {

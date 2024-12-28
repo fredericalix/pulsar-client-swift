@@ -110,7 +110,7 @@ extension PulsarClientHandler {
 		correlationMap.context?.writeAndFlush(wrapOutboundOut(pulsarMessage), promise: nil)
 	}
 
-	func closeConsumer(consumerID: UInt64) async throws {
+	public func closeConsumer(consumerID: UInt64) async throws {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .closeConsumer
 		var closeCmd = Pulsar_Proto_CommandCloseConsumer()

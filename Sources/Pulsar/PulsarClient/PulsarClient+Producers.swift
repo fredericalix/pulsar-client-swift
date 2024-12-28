@@ -18,9 +18,10 @@ public extension PulsarClient {
 	///   - topic: The topic to produce to.
 	///   - accessMode: The access mode of the producer.
 	///   - producerID: Optional: If you want to define your own producerID.
-	///   - producerName: The name of the producer. Gets auto-assigned by the server when left empty.
+	///   - producerName: Optional: The name of the producer. Gets auto-assigned by the server when left empty.
 	///   - connectionString: Not recommended:  Define another URL where the topic will be found. Can cause issues with connection.
 	///   - existingProducer: Not recommended: Reuse an existing producer.
+	///   - onClosed: This function will be called if the producer needs to be closed.
 	/// - Returns: The newly created producer.
 	///
 	/// - Warning: `connectionString` and `existingProducer` are there for internal implementation and shouldn't be used by the library user.
@@ -30,7 +31,8 @@ public extension PulsarClient {
 		producerID: UInt64? = nil,
 		producerName: String? = nil,
 		connectionString: String? = nil,
-		existingProducer: PulsarProducer? = nil) async throws -> PulsarProducer {
+		existingProducer: PulsarProducer? = nil,
+		onClosed: (@Sendable (any Error) -> Void)?) async throws -> PulsarProducer {
 		var connectionString = connectionString ?? initialURL
 		var topicFound = false
 
@@ -55,7 +57,7 @@ public extension PulsarClient {
 		}
 
 		guard let channel = connectionPool[connectionString] else {
-			throw PulsarClientError.topicLookupFailed
+			throw PulsarClientError.connectionError
 		}
 		let handler = try await channel.pipeline.handler(type: PulsarClientHandler.self).get()
 
@@ -65,10 +67,11 @@ public extension PulsarClient {
 				accessMode: accessMode,
 				producerName: producerName,
 				producerID: producerID!,
-				existingProducer: existingProducer
+				existingProducer: existingProducer,
+				onClosed: onClosed
 			)
 		} else {
-			try await handler.createProducer(topic: topic, accessMode: accessMode, producerName: producerName)
+			try await handler.createProducer(topic: topic, accessMode: accessMode, producerName: producerName, onClosed: onClosed)
 		}
 
 		return producer

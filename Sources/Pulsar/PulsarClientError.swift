@@ -42,6 +42,7 @@ public enum PulsarClientError: Error {
 	case tooManyRequests
 	case topicTerminated
 	case producerBusy
+	case closedByUser
 	case invalidTopicName
 	case incompatibleSchema
 	case consumerAssignError
@@ -51,4 +52,32 @@ public enum PulsarClientError: Error {
 	case transactionConflict
 	case transactionNotFound
 	case producerFenced
+
+	static func isUserHandledError(_ error: any Error) -> Bool {
+		if let error = error as? PulsarClientError {
+			switch error {
+				case .authenticationError,
+				     .authorizationError,
+				     .producerBlocked,
+				     .checksumError,
+				     .unsupportedVersion,
+				     .topicNotFound,
+				     .subscriptionNotFound,
+				     .consumerNotFound,
+				     .topicTerminated,
+				     .invalidTopicName,
+				     .incompatibleSchema,
+				     .transactionCoordinatorNotFound,
+				     .invalidTxnStatus,
+				     .notAllowed,
+				     .transactionConflict,
+				     .transactionNotFound,
+				     .producerFenced:
+					true
+				default: false
+			}
+		} else {
+			false
+		}
+	}
 }

@@ -23,19 +23,26 @@ public final actor PulsarClient {
 	var initialURL: String
 	var isReconnecting: Set<String> = []
 	var isFirstConnect: Bool = true
+	var reconnectLimit: Int?
+	// Callback function called whenever the client gets closed, forcefully or user intended.
+	public let onClosed: ((Error) -> Void)?
 
 	/// Creates a new Pulsar Client and tries to connect it.
 	/// - Parameters:
 	///   - host: The host to connect to. Doesn't need the `pulsar://` prefix.
 	///   - port: The port to connect to. Normally `6650`.
 	///   - group: If you want to pass your own EventLoopGroup, you can do it here. Otherwise the client will create it's own.
-	public init(host: String, port: Int, group: EventLoopGroup? = nil) async {
+	///   - reconnectLimit: How often the client should try reconnecting, if a connection is lost. The reconnection happens with an exponential backoff. The default limit is 10. Pass `nil` if the client should try reconnecting indefinitely.
+	///   - onClosed: If the client gets closed, this function gets called.
+	public init(host: String, port: Int, group: EventLoopGroup? = nil, reconnectLimit: Int? = 10, onClosed: ((Error) -> Void)?) async {
 		#if DEBUG
 			self.group = group ?? MultiThreadedEventLoopGroup(numberOfThreads: 1)
 		#else
 			self.group = group ?? MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 		#endif
 		initialURL = host
+		self.reconnectLimit = reconnectLimit
+		self.onClosed = onClosed
 		await connect(host: host, port: port)
 	}
 
@@ -86,6 +93,9 @@ public final actor PulsarClient {
 					try await handler.closeConsumer(consumerID: consumerID)
 					cache.consumer.fail(error: PulsarClientError.clientClosed)
 				}
+				for (producerID, _) in handler.producers {
+					try await handler.closeProducer(producerID: producerID)
+				}
 			}
 		}
 
@@ -98,7 +108,7 @@ public final actor PulsarClient {
 			}
 		}
 		connectionPool.removeAll()
-
+		onClosed?(PulsarClientError.clientClosed)
 		// Finally, inform the caller we are closed
 		throw PulsarClientError.clientClosed
 	}

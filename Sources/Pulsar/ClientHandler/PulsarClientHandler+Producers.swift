@@ -33,6 +33,27 @@ extension PulsarClientHandler {
 		}
 	}
 
+	public func closeProducer(producerID: UInt64) async throws {
+		var baseCommand = Pulsar_Proto_BaseCommand()
+		baseCommand.type = .closeProducer
+		var closeCmd = Pulsar_Proto_CommandCloseProducer()
+		let requestID = UInt64.random(in: 0 ..< UInt64.max)
+		closeCmd.producerID = producerID
+		closeCmd.requestID = requestID
+
+		let promise = makePromise(context: correlationMap.context!, type: .id(requestID))
+		correlationMap.add(promise: .id(requestID), promiseValue: promise)
+
+		baseCommand.closeProducer = closeCmd
+		let pulsarMessage = PulsarMessage(command: baseCommand)
+
+		try await correlationMap.context!.eventLoop.submit {
+			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
+		}.get()
+
+		try await promise.futureResult.get()
+	}
+
 	func handleSendReceipt(context _: ChannelHandlerContext, message: Pulsar_Proto_CommandSendReceipt) {
 		let producerID = message.producerID
 		let sequenceID = message.sequenceID
@@ -55,7 +76,7 @@ extension PulsarClientHandler {
 		Task {
 			do {
 				logger.info("Attempting to reconnect producer for \(producer.topic)...")
-				_ = try await client.producer(topic: producer.topic, accessMode: producer.accessMode, producerID: producerID, existingProducer: producer)
+				_ = try await client.producer(topic: producer.topic, accessMode: producer.accessMode, producerID: producerID, existingProducer: producer, onClosed: producer.onClosed)
 				logger.info("Successfully reconnected \(producer.topic)")
 			} catch {
 				logger.error("Reconnect failed for \(producer.topic): \(error)")
@@ -79,19 +100,17 @@ extension PulsarClientHandler {
 		msgMetadata.sequenceID = sequenceID
 		msgMetadata.publishTime = UInt64(Date().timeIntervalSince1970 * 1000)
 		msgMetadata.properties = []
-		var promise: EventLoopPromise<Void>?
-		if isSyncSend {
-			promise = makePromise(context: correlationMap.context!, type: .send(producerID: producerID, sequenceID: sequenceID))
-			// We just instantiated a promise, so it is there.
-			correlationMap.add(promise: .send(producerID: producerID, sequenceID: sequenceID), promiseValue: promise!)
-		}
+		var promise: EventLoopPromise<Void>
+		promise = makePromise(context: correlationMap.context!, type: .send(producerID: producerID, sequenceID: sequenceID), forceClose: isSyncSend)
+		// We just instantiated a promise, so it is there.
+		correlationMap.add(promise: .send(producerID: producerID, sequenceID: sequenceID), promiseValue: promise)
 		let message = PulsarMessage(command: baseCmd, messageMetadata: msgMetadata, payload: payload)
 		try await correlationMap.context!.eventLoop.submit {
 			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(message), promise: nil)
 		}.get()
 		if isSyncSend {
 			// We are sure the promise is not null because it got added in the i-block with the same condition before.
-			try await promise!.futureResult.get()
+			try await promise.futureResult.get()
 		}
 	}
 
@@ -99,7 +118,8 @@ extension PulsarClientHandler {
 	                    accessMode: ProducerAccessMode,
 	                    producerName: String? = nil,
 	                    producerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
-	                    existingProducer: PulsarProducer? = nil) async throws -> PulsarProducer {
+	                    existingProducer: PulsarProducer? = nil,
+	                    onClosed: (@Sendable (any Error) -> Void)?) async throws -> PulsarProducer {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .producer
 		var producerCmd = Pulsar_Proto_CommandProducer()
@@ -134,7 +154,8 @@ extension PulsarClientHandler {
 				handler: self,
 				producerAccessMode: accessMode,
 				producerID: producerID,
-				topic: topic
+				topic: topic,
+				onClosed: onClosed
 			)
 		}
 		producers[producerID] = ProducerCache(producerID: producerID, producer: producer, createRequestID: requestID)
