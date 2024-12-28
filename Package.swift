@@ -40,7 +40,7 @@ let package = Package(
 			]
 		),
 		.testTarget(
-			name: "pulsar-client-swiftTests",
+			name: "PulsarTests",
 			dependencies: ["Pulsar"]
 		)
 	],

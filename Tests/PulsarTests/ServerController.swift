@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//
+//  ServerController.swift
+//  pulsar-client-swift
+//
+//  Created by Felix Ruppert on 28.12.24.
+//
 import Foundation
-import Logging
-@testable import Pulsar
-import Testing
 
 struct ServerController {
 	static func runCommand(_ command: String) async throws {
 		let process = Process()
 		let pipe = Pipe()
 		let errorPipe = Pipe()
-		#if os(macOS)
+		#if canImport(Darwin)
 			let shellPath = "/bin/zsh"
 		#else
 			let shellPath = "/bin/bash"
@@ -70,28 +73,5 @@ struct ServerController {
 
 		// Remove the Pulsar container
 		try await runCommand("/usr/local/bin/docker rm pulsar")
-	}
-}
-
-@Suite("Client Tests", .serialized)
-struct ClientTests {
-	@Test("Connect to a running client")
-	func connect() async throws {
-		try await ServerController.startServer()
-		try await Task.sleep(for: .seconds(10))
-		await #expect(throws: Never.self) {
-			_ = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 1) { _ in
-			}
-		}
-		try await ServerController.stopServer()
-	}
-
-	@Test("Connect to a non running client")
-	func connectNonRunning() async throws {
-		await #expect(throws: PulsarClientError.connectionError) {
-			_ = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 1) { error in
-				throw error
-			}
-		}
 	}
 }
