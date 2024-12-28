@@ -35,12 +35,11 @@ public extension PulsarClient {
 		existingConsumer: PulsarConsumer? = nil) async throws -> PulsarConsumer {
 		var connectionString = connectionString ?? initialURL
 		var topicFound = false
-
 		// Possibly do multiple lookups if the broker says "redirect"
 		while !topicFound {
 			// Must have a channel for the current connectionString
 			guard let channel = connectionPool[connectionString] else {
-				throw PulsarClientError.topicLookupFailed
+				throw PulsarClientError.connectionError
 			}
 			let handler = try await channel.pipeline.handler(type: PulsarClientHandler.self).get()
 
@@ -58,7 +57,7 @@ public extension PulsarClient {
 
 		// By now, we have a connection for `connectionString`
 		guard let channel = connectionPool[connectionString] else {
-			throw PulsarClientError.topicLookupFailed
+			throw PulsarClientError.connectionError
 		}
 		let handler = try await channel.pipeline.handler(type: PulsarClientHandler.self).get()
 

@@ -19,10 +19,36 @@ public enum PulsarClientError: Error {
 	case consumerClosed
 	case unsupportedMessageType
 	case serverError(String)
-	case unknownError
+	case unknownError(String)
 	case invalidFrame
 	case connectionTimeout
+	case internalError(String)
 	case checksumMismatch
 	case consumerFailed
 	case producerFailed
+	case connectionError
+	case metadataError
+	case persistenceError
+	case authenticationError
+	case authorizationError
+	case consumerBusy
+	case serviceNotReady
+	case producerBlocked
+	case checksumError
+	case unsupportedVersion
+	case topicNotFound
+	case subscriptionNotFound
+	case consumerNotFound
+	case tooManyRequests
+	case topicTerminated
+	case producerBusy
+	case invalidTopicName
+	case incompatibleSchema
+	case consumerAssignError
+	case transactionCoordinatorNotFound
+	case invalidTxnStatus
+	case notAllowed
+	case transactionConflict
+	case transactionNotFound
+	case producerFenced
 }
