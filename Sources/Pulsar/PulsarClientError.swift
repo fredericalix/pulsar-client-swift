@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-public enum PulsarClientError: Error {
+public enum PulsarClientError: Error, Equatable {
 	case clientClosed
-	case networkError(Error)
+	case networkError
 	case topicLookupFailed
 	case consumerClosed
 	case unsupportedMessageType

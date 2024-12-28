@@ -18,9 +18,9 @@ public final class PulsarProducer: Sendable {
 	let topic: String
 	let stateManager = ProducerStateManager()
 	let accessMode: ProducerAccessMode
-	public let onClosed: (@Sendable (any Error) -> Void)?
+	public let onClosed: (@Sendable (any Error) throws -> Void)?
 
-	init(handler: PulsarClientHandler, producerAccessMode: ProducerAccessMode, producerID: UInt64, topic: String, producerName: String? = nil, onClosed: (@Sendable (any Error) -> Void)?) {
+	init(handler: PulsarClientHandler, producerAccessMode: ProducerAccessMode, producerID: UInt64, topic: String, producerName: String? = nil, onClosed: (@Sendable (any Error) throws -> Void)?) {
 		self.producerID = producerID
 		self.topic = topic
 		self.onClosed = onClosed
@@ -48,7 +48,7 @@ public final class PulsarProducer: Sendable {
 	/// Close the consumer
 	public func close() async throws {
 		try await stateManager.getHandler().closeProducer(producerID: producerID)
-		onClosed?(PulsarClientError.closedByUser)
+		try onClosed?(PulsarClientError.closedByUser)
 	}
 
 	/// Send messages asynchronously.

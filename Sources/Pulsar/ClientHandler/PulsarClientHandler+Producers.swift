@@ -119,7 +119,7 @@ extension PulsarClientHandler {
 	                    producerName: String? = nil,
 	                    producerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
 	                    existingProducer: PulsarProducer? = nil,
-	                    onClosed: (@Sendable (any Error) -> Void)?) async throws -> PulsarProducer {
+	                    onClosed: (@Sendable (any Error) throws -> Void)?) async throws -> PulsarProducer {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .producer
 		var producerCmd = Pulsar_Proto_CommandProducer()

@@ -38,7 +38,7 @@ extension PulsarClient {
 		while true {
 			attempt += 1
 			do {
-				logger.info("Reconnection attempt #\(attempt) to \(remoteAddress):\(port)")
+				logger.info("Reconnection attempt #\(attempt) of \(reconnectLimit ?? Int.max) to \(remoteAddress):\(port)")
 
 				await connect(host: remoteAddress, port: port)
 
@@ -54,8 +54,16 @@ extension PulsarClient {
 						do {
 							try await close()
 						} catch {
-							logger.critical("Closing client failed. Continuing from here has undefined behavior.")
+							if let error = error as? PulsarClientError {
+								switch error {
+									case .clientClosed:
+										break
+									default:
+										logger.critical("Closing client failed. Continuing from here has undefined behavior.")
+								}
+							}
 						}
+						break
 					}
 				}
 				logger.error("Reconnection attempt #\(attempt) to \(remoteAddress) failed: \(error)")
@@ -97,7 +105,7 @@ extension PulsarClient {
 
 				// Let the producer close if there is an error which should be handled by the library owner
 				if PulsarClientError.isUserHandledError(error) {
-					oldProducer.onClosed?(error)
+					try oldProducer.onClosed?(error)
 				}
 				throw PulsarClientError.producerFailed
 			}

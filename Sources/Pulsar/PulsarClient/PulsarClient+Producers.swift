@@ -32,7 +32,7 @@ public extension PulsarClient {
 		producerName: String? = nil,
 		connectionString: String? = nil,
 		existingProducer: PulsarProducer? = nil,
-		onClosed: (@Sendable (any Error) -> Void)?) async throws -> PulsarProducer {
+		onClosed: (@Sendable (any Error) throws -> Void)?) async throws -> PulsarProducer {
 		var connectionString = connectionString ?? initialURL
 		var topicFound = false
 

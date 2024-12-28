@@ -25,7 +25,7 @@ public final actor PulsarClient {
 	var isFirstConnect: Bool = true
 	var reconnectLimit: Int?
 	// Callback function called whenever the client gets closed, forcefully or user intended.
-	public let onClosed: ((Error) -> Void)?
+	public let onClosed: ((Error) throws -> Void)?
 
 	/// Creates a new Pulsar Client and tries to connect it.
 	/// - Parameters:
@@ -34,7 +34,7 @@ public final actor PulsarClient {
 	///   - group: If you want to pass your own EventLoopGroup, you can do it here. Otherwise the client will create it's own.
 	///   - reconnectLimit: How often the client should try reconnecting, if a connection is lost. The reconnection happens with an exponential backoff. The default limit is 10. Pass `nil` if the client should try reconnecting indefinitely.
 	///   - onClosed: If the client gets closed, this function gets called.
-	public init(host: String, port: Int, group: EventLoopGroup? = nil, reconnectLimit: Int? = 10, onClosed: ((Error) -> Void)?) async {
+	public init(host: String, port: Int, group: EventLoopGroup? = nil, reconnectLimit: Int? = 10,  onClosed: ((Error) throws -> Void)?) async {
 		#if DEBUG
 			self.group = group ?? MultiThreadedEventLoopGroup(numberOfThreads: 1)
 		#else
@@ -108,7 +108,7 @@ public final actor PulsarClient {
 			}
 		}
 		connectionPool.removeAll()
-		onClosed?(PulsarClientError.clientClosed)
+		try onClosed?(PulsarClientError.clientClosed)
 		// Finally, inform the caller we are closed
 		throw PulsarClientError.clientClosed
 	}

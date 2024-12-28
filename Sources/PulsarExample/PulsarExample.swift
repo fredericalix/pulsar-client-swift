@@ -32,9 +32,9 @@ struct PulsarExample {
 	func connect(eventLoopGroup: EventLoopGroup) async throws {
 		var msgCount = 0
 
-		let client = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 10) { _ in
+		let client = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 1) { error in
 			print("Client closed")
-			fatalError("We closed")
+			throw error
 		}
 		let consumer = try await client.consumer(topic: "persistent://public/default/my-topic", subscription: "test", subscriptionType: .shared)
 		Task {
