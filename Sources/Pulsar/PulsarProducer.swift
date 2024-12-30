@@ -18,11 +18,19 @@ public final class PulsarProducer: Sendable {
 	let topic: String
 	let stateManager = ProducerStateManager()
 	let accessMode: ProducerAccessMode
+	let schema: PulsarSchema
 	public let onClosed: (@Sendable (any Error) throws -> Void)?
 
-	init(handler: PulsarClientHandler, producerAccessMode: ProducerAccessMode, producerID: UInt64, topic: String, producerName: String? = nil, onClosed: (@Sendable (any Error) throws -> Void)?) {
+	init(handler: PulsarClientHandler,
+	     producerAccessMode: ProducerAccessMode,
+	     producerID: UInt64,
+	     schema: PulsarSchema,
+	     topic: String,
+	     producerName: String? = nil,
+	     onClosed: (@Sendable (any Error) throws -> Void)?) {
 		self.producerID = producerID
 		self.topic = topic
+		self.schema = schema
 		self.onClosed = onClosed
 		accessMode = producerAccessMode
 		Task {

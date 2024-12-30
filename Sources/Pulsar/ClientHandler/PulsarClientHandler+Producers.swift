@@ -24,7 +24,7 @@ extension PulsarClientHandler {
 		let producerID = producers.map { ($0.value.producerID, $0.value.createRequestID) }.filter { $0.1 == requestID }.first!.0
 		Task {
 			await producers[producerID]!.producer.stateManager.setProducerName(message.producerName)
-			await producers[producerID]!.producer.stateManager.setSequenceID(UInt64(message.lastSequenceID + 1))
+			await producers[producerID]!.producer.stateManager.setSequenceID(message.lastSequenceID)
 		}
 
 		if let promise = correlationMap.remove(promise: .id(message.requestID)) {
@@ -85,25 +85,25 @@ extension PulsarClientHandler {
 	}
 
 	func send(message: Message, producerID: UInt64, producerName: String, isSyncSend: Bool) async throws {
-		let data = message.data
-		let payload = ByteBuffer(data: data)
+		let data = message.payload
+		let payload = try ByteBuffer(pulsarPayload: data)
 		var baseCmd = Pulsar_Proto_BaseCommand()
 		baseCmd.type = .send
 		var sendCmd = Pulsar_Proto_CommandSend()
 		sendCmd.producerID = producerID
 		let sequenceID = await producers[producerID]!.producer.stateManager.sequenceID
-		sendCmd.sequenceID = sequenceID
+		sendCmd.sequenceID = UInt64(sequenceID)
 		sendCmd.numMessages = 1
 		baseCmd.send = sendCmd
 		var msgMetadata = Pulsar_Proto_MessageMetadata()
 		msgMetadata.producerName = producerName
-		msgMetadata.sequenceID = sequenceID
+		msgMetadata.sequenceID = UInt64(sequenceID)
 		msgMetadata.publishTime = UInt64(Date().timeIntervalSince1970 * 1000)
 		msgMetadata.properties = []
 		var promise: EventLoopPromise<Void>
-		promise = makePromise(context: correlationMap.context!, type: .send(producerID: producerID, sequenceID: sequenceID), forceClose: isSyncSend)
+		promise = makePromise(context: correlationMap.context!, type: .send(producerID: producerID, sequenceID: UInt64(sequenceID)), forceClose: isSyncSend)
 		// We just instantiated a promise, so it is there.
-		correlationMap.add(promise: .send(producerID: producerID, sequenceID: sequenceID), promiseValue: promise)
+		correlationMap.add(promise: .send(producerID: producerID, sequenceID: UInt64(sequenceID)), promiseValue: promise)
 		let message = PulsarMessage(command: baseCmd, messageMetadata: msgMetadata, payload: payload)
 		try await correlationMap.context!.eventLoop.submit {
 			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(message), promise: nil)
@@ -116,6 +116,7 @@ extension PulsarClientHandler {
 
 	func createProducer(topic: String,
 	                    accessMode: ProducerAccessMode,
+	                    schema: PulsarSchema,
 	                    producerName: String? = nil,
 	                    producerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
 	                    existingProducer: PulsarProducer? = nil,
@@ -136,6 +137,37 @@ extension PulsarClientHandler {
 		if let producerName {
 			producerCmd.producerName = producerName
 		}
+		var schemaCmd: Pulsar_Proto_Schema?
+
+		// schema handling
+		if schema != .bytes {
+			schemaCmd = Pulsar_Proto_Schema()
+			schemaCmd?.type = switch schema {
+				case .string: .string
+				case .bool: .bool
+				case .int8: .int8
+				case .int16: .int16
+				case .int32: .int32
+				case .int64: .int64
+				case .float: .float
+				case .double: .double
+				case .date: .date
+				case .time: .time
+				case .timestamp: .timestamp
+				case .instant: .instant
+				case .localDate: .localDate
+				case .localTime: .localTime
+				case .localDateTime: .localDateTime
+				case .bytes: .none
+			}
+			// for primitive schemas, add an empty schema data, as we only support primitive schemas, no need for any logics
+			schemaCmd?.schemaData = "".data(using: .utf8)!
+			schemaCmd?.properties = []
+			schemaCmd?.name = ""
+		}
+		if let schemaCmd {
+			producerCmd.schema = schemaCmd
+		}
 
 		let promise = makePromise(context: correlationMap.context!, type: .id(requestID))
 		correlationMap.add(promise: .id(requestID), promiseValue: promise)
@@ -154,6 +186,7 @@ extension PulsarClientHandler {
 				handler: self,
 				producerAccessMode: accessMode,
 				producerID: producerID,
+				schema: schema,
 				topic: topic,
 				onClosed: onClosed
 			)

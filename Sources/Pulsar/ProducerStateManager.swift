@@ -14,14 +14,14 @@
 
 actor ProducerStateManager {
 	var producerName: String?
-	var sequenceID: UInt64 = 0
+	var sequenceID: Int64 = -1
 	var handler: PulsarClientHandler?
 
 	func setProducerName(_ producerName: String?) {
 		self.producerName = producerName
 	}
 
-	func setSequenceID(_ sequenceID: UInt64) {
+	func setSequenceID(_ sequenceID: Int64) {
 		self.sequenceID = sequenceID
 	}
 
@@ -38,7 +38,7 @@ actor ProducerStateManager {
 	}
 
 	@discardableResult
-	func increaseSequenceID() -> UInt64 {
+	func increaseSequenceID() -> Int64 {
 		sequenceID += 1
 		return sequenceID
 	}

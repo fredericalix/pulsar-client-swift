@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import Foundation
 import Logging
 import NIO
 import Pulsar
@@ -43,7 +44,8 @@ struct PulsarExample {
 					// Fix an concurrency false-positive in Swift 5.10 - It's only demo code, so no issue
 					#if compiler(>=6)
 						msgCount += 1
-						print("Received message in the exec: \(String(decoding: message.data, as: UTF8.self))")
+						let stringPayload = message.payload as! Data
+						print("Received message in the exec: \(String(decoding: stringPayload, as: UTF8.self))")
 						if msgCount == 2 {
 							try await consumer.close()
 							print("Closed consumer")
@@ -55,14 +57,14 @@ struct PulsarExample {
 			}
 		}
 
-		let producer = try await client.producer(topic: "persistent://public/default/my-topic1", accessMode: .shared) { _ in
+		let producer = try await client.producer(topic: "persistent://public/default/my-topic1", accessMode: .shared, schema: .string) { _ in
 			print("Produer closed")
 		}
 		Task {
 			while true {
 				do {
 					let testMsg = "Hello from Swift".data(using: .utf8)!
-					try await producer.asyncSend(message: Message(data: testMsg))
+					try await producer.asyncSend(message: Message(payload: testMsg))
 					try await Task.sleep(for: .seconds(5))
 					print("we try to send a message here")
 				} catch {

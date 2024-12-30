@@ -14,10 +14,15 @@
 
 import Foundation
 
-public struct Message: Sendable {
-	public let payload: any PulsarPayload
+public protocol PulsarPayload: Codable, Sendable { }
 
-	public init(payload: any PulsarPayload) {
-		self.payload = payload
-	}
-}
+extension Data: PulsarPayload { }
+extension String: PulsarPayload { }
+extension Bool: PulsarPayload { }
+extension Int8: PulsarPayload { }
+extension Int16: PulsarPayload { }
+extension Int32: PulsarPayload { }
+extension Int64: PulsarPayload { }
+extension Float: PulsarPayload { }
+extension Double: PulsarPayload { }
+extension Date: PulsarPayload { }

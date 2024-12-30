@@ -28,6 +28,7 @@ public extension PulsarClient {
 	func producer(
 		topic: String,
 		accessMode: ProducerAccessMode,
+		schema: PulsarSchema = .bytes,
 		producerID: UInt64? = nil,
 		producerName: String? = nil,
 		connectionString: String? = nil,
@@ -65,13 +66,20 @@ public extension PulsarClient {
 			try await handler.createProducer(
 				topic: topic,
 				accessMode: accessMode,
+				schema: schema,
 				producerName: producerName,
 				producerID: producerID!,
 				existingProducer: existingProducer,
 				onClosed: onClosed
 			)
 		} else {
-			try await handler.createProducer(topic: topic, accessMode: accessMode, producerName: producerName, onClosed: onClosed)
+			try await handler.createProducer(
+				topic: topic,
+				accessMode: accessMode,
+				schema: schema,
+				producerName: producerName,
+				onClosed: onClosed
+			)
 		}
 
 		return producer

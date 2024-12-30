@@ -233,7 +233,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		}
 		let receivingConsumer = receivingConsumerCache.consumer
 		if let payload = message.payload {
-			receivingConsumer.continuation.yield(Message(data: Data(buffer: payload)))
+			receivingConsumer.continuation.yield(Message(payload: Data(buffer: payload)))
 			receivingConsumerCache.messageCount += 1
 		}
 		if receivingConsumer.autoAcknowledge {

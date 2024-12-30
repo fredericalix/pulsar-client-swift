@@ -88,6 +88,7 @@ extension PulsarClient {
 			let accessMode = oldProducer.accessMode
 			let producerID = oldProducer.producerID
 			let onClosed = oldProducer.onClosed
+			let oldSchema = oldProducer.schema
 
 			logger.info("Reconnection producerID \(producerCache.producerID) to topic \(topic)")
 
@@ -95,6 +96,7 @@ extension PulsarClient {
 				_ = try await producer(
 					topic: topic,
 					accessMode: accessMode,
+					schema: oldSchema,
 					producerID: producerID,
 					connectionString: host,
 					existingProducer: oldProducer,

@@ -12,12 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import Foundation
-
-public struct Message: Sendable {
-	public let payload: any PulsarPayload
-
-	public init(payload: any PulsarPayload) {
-		self.payload = payload
-	}
+public enum PulsarSchema: String, Equatable, Sendable {
+	case bytes
+	case string
+	case bool
+	case int8
+	case int16
+	case int32
+	case int64
+	case float
+	case double
+	case date
+	case time
+	case timestamp
+	case instant
+	case localDate
+	case localTime
+	case localDateTime
 }
