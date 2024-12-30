@@ -233,8 +233,19 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		}
 		let receivingConsumer = receivingConsumerCache.consumer
 		if let payload = message.payload {
-			receivingConsumer.continuation.yield(Message(payload: Data(buffer: payload)))
-			receivingConsumerCache.messageCount += 1
+			do {
+				let typedPayload = try receivingConsumer.schema.decodePayload(payload)
+				
+				receivingConsumer.continuation.yield(
+					Message(payload: typedPayload)
+				)
+				
+				receivingConsumerCache.messageCount += 1
+				
+			} catch {
+				logger.error("Failed to decode payload: \(error)")
+				// In a real app, you might want to handle or dead-letter the message
+			}
 		}
 		if receivingConsumer.autoAcknowledge {
 			acknowledge(context: context, message: message)
