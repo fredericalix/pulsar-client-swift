@@ -137,35 +137,7 @@ extension PulsarClientHandler {
 		if let producerName {
 			producerCmd.producerName = producerName
 		}
-		var schemaCmd: Pulsar_Proto_Schema?
-
-		// schema handling
-		if schema != .bytes {
-			schemaCmd = Pulsar_Proto_Schema()
-			schemaCmd?.type = switch schema {
-				case .string: .string
-				case .bool: .bool
-				case .int8: .int8
-				case .int16: .int16
-				case .int32: .int32
-				case .int64: .int64
-				case .float: .float
-				case .double: .double
-				case .date: .date
-				case .time: .time
-				case .timestamp: .timestamp
-				case .instant: .instant
-				case .localDate: .localDate
-				case .localTime: .localTime
-				case .localDateTime: .localDateTime
-				case .bytes: .none
-			}
-			// for primitive schemas, add an empty schema data, as we only support primitive schemas, no need for any logics
-			schemaCmd?.schemaData = "".data(using: .utf8)!
-			schemaCmd?.properties = []
-			schemaCmd?.name = ""
-		}
-		if let schemaCmd {
+		if let schemaCmd = getSchemaCmd(schema: schema) {
 			producerCmd.schema = schemaCmd
 		}
 

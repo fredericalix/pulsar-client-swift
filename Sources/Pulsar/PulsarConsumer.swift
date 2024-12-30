@@ -20,6 +20,7 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 	let subscriptionName: String
 	let subscriptionType: SubscriptionType
 	let subscriptionMode: SubscriptionMode
+	let schema: PulsarSchema
 	let stateManager = ConsumerStateHandler()
 
 	private let stream: AsyncThrowingStream<Message, Error>
@@ -37,7 +38,8 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 	     topic: String,
 	     subscriptionName: String,
 	     subscriptionType: SubscriptionType,
-	     subscriptionMode: SubscriptionMode
+	     subscriptionMode: SubscriptionMode,
+	     schema: PulsarSchema
 	) {
 		var cont: AsyncThrowingStream<Message, Error>.Continuation!
 		stream = AsyncThrowingStream { c in
@@ -50,6 +52,7 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 		self.subscriptionName = subscriptionName
 		self.subscriptionType = subscriptionType
 		self.subscriptionMode = subscriptionMode
+		self.schema = schema
 		Task {
 			await self.stateManager.setHandler(handler)
 		}

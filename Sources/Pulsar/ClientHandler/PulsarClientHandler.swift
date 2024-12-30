@@ -390,6 +390,38 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		context.writeAndFlush(wrapOutboundOut(pulsarMessage), promise: nil)
 	}
 
+	func getSchemaCmd(schema: PulsarSchema) -> Pulsar_Proto_Schema? {
+		var schemaCmd: Pulsar_Proto_Schema?
+
+		if schema != .bytes {
+			schemaCmd = Pulsar_Proto_Schema()
+			schemaCmd?.type = switch schema {
+				case .string: .string
+				case .bool: .bool
+				case .int8: .int8
+				case .int16: .int16
+				case .int32: .int32
+				case .int64: .int64
+				case .float: .float
+				case .double: .double
+				case .date: .date
+				case .time: .time
+				case .timestamp: .timestamp
+				case .instant: .instant
+				case .localDate: .localDate
+				case .localTime: .localTime
+				case .localDateTime: .localDateTime
+				case .bytes: .none
+			}
+			// for primitive schemas, add an empty schema data, as we only support primitive schemas, no need for any logics
+			schemaCmd?.schemaData = "".data(using: .utf8)!
+			schemaCmd?.properties = []
+			schemaCmd?.name = ""
+		}
+
+		return schemaCmd
+	}
+
 	// MARK: - Topic Lookup
 
 	/// Looks up the topic. If the broker says “redirect,” we store that in `correlationMap` and succeed the promise.

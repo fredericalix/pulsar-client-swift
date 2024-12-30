@@ -29,6 +29,7 @@ public extension PulsarClient {
 		topic: String,
 		subscription: String,
 		subscriptionType: SubscriptionType,
+		schema: PulsarSchema = .bytes,
 		subscriptionMode: SubscriptionMode = .durable,
 		consumerID: UInt64? = nil,
 		connectionString: String? = nil,
@@ -67,6 +68,7 @@ public extension PulsarClient {
 				topic: topic,
 				subscription: subscription,
 				consumerID: consumerID!,
+				schema: schema,
 				existingConsumer: existingConsumer,
 				subscriptionType: subscriptionType,
 				subscriptionMode: subscriptionMode
@@ -75,6 +77,7 @@ public extension PulsarClient {
 			try await handler.subscribe(
 				topic: topic,
 				subscription: subscription,
+				schema: schema,
 				subscriptionType: subscriptionType,
 				subscriptionMode: subscriptionMode
 			)

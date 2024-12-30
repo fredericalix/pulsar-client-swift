@@ -30,6 +30,7 @@ extension PulsarClientHandler {
 	func subscribe(topic: String,
 	               subscription: String,
 	               consumerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
+	               schema: PulsarSchema,
 	               existingConsumer: PulsarConsumer? = nil,
 	               subscriptionType: SubscriptionType,
 	               subscriptionMode: SubscriptionMode) async throws -> PulsarConsumer {
@@ -51,7 +52,9 @@ extension PulsarClientHandler {
 				.shared
 		}
 		subscribeCmd.consumerID = consumerID
-
+		if let schemaCmd = getSchemaCmd(schema: schema) {
+			subscribeCmd.schema = schemaCmd
+		}
 		let promise = makePromise(context: correlationMap.context!, type: .id(requestID))
 		correlationMap.add(promise: .id(requestID), promiseValue: promise)
 
@@ -71,7 +74,8 @@ extension PulsarClientHandler {
 				topic: topic,
 				subscriptionName: subscription,
 				subscriptionType: subscriptionType,
-				subscriptionMode: subscriptionMode
+				subscriptionMode: subscriptionMode,
+				schema: schema
 			)
 		}
 		consumers[consumerID] = ConsumerCache(consumerID: consumerID, consumer: consumer)

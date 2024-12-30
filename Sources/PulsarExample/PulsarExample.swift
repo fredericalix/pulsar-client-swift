@@ -37,7 +37,7 @@ struct PulsarExample {
 			print("Client closed")
 			throw error
 		}
-		let consumer = try await client.consumer(topic: "persistent://public/default/my-topic", subscription: "test", subscriptionType: .shared)
+		let consumer = try await client.consumer(topic: "persistent://public/default/my-topic2", subscription: "test", subscriptionType: .shared, schema: .time)
 		Task {
 			do {
 				for try await message in consumer {

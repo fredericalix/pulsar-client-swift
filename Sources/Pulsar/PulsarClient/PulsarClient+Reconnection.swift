@@ -129,6 +129,7 @@ extension PulsarClient {
 			let consumerID = oldConsumer.consumerID
 			let subscriptionType = oldConsumer.subscriptionType
 			let subscriptionMode = oldConsumer.subscriptionMode
+			let oldSchema = oldConsumer.schema
 
 			logger.info("Re-subscribing consumerID \(consumerCache.consumerID) for topic \(topic)")
 
@@ -137,6 +138,7 @@ extension PulsarClient {
 					topic: topic,
 					subscription: subscription,
 					subscriptionType: subscriptionType,
+					schema: oldSchema,
 					subscriptionMode: subscriptionMode,
 					consumerID: consumerID,
 					connectionString: host,
