@@ -9,6 +9,10 @@ let package = Package(
 		.library(
 			name: "Pulsar",
 			targets: ["Pulsar"]
+		),
+		.library(
+			name: "SchemaTypes",
+			targets: ["SchemaTypes"]
 		)
 	],
 	dependencies: [
@@ -25,7 +29,8 @@ let package = Package(
 				.product(name: "SwiftProtobuf", package: "swift-protobuf"),
 				.product(name: "NIOSSL", package: "swift-nio-ssl"),
 				.product(name: "NIOFoundationCompat", package: "swift-nio"),
-				.product(name: "Logging", package: "swift-log")
+				.product(name: "Logging", package: "swift-log"),
+				.target(name: "SchemaTypes")
 			]
 
 		),
@@ -38,7 +43,8 @@ let package = Package(
 		.testTarget(
 			name: "PulsarTests",
 			dependencies: ["Pulsar"]
-		)
+		),
+		.target(name: "SchemaTypes")
 	],
 	swiftLanguageModes: [.v6]
 )

@@ -13,17 +13,25 @@
 // limitations under the License.
 
 import Foundation
-import NIOCore
 
-enum BackoffStrategy {
-	case exponential(initialDelay: TimeAmount, factor: Double, maxDelay: TimeAmount)
+/// The corresponding Swift type for a Pulsar Schema with type `instant`.
+public struct PulsarInstant: Sendable {
+	public let seconds: Int64
+	public let nanos: Int32
 
-	func delay(forAttempt attempt: Int) -> TimeAmount {
-		switch self {
-			case .exponential(let initial, let factor, let max):
-				let multiplier = pow(factor, Double(attempt))
-				let computed = TimeAmount.nanoseconds(Int64(Double(initial.nanoseconds) * multiplier))
-				return computed > max ? max : computed
-		}
+	public init(seconds: Int64, nanos: Int32) {
+		self.seconds = seconds
+		self.nanos = nanos
+	}
+
+	public init(date: Date) {
+		let totalSeconds = Int64(date.timeIntervalSince1970)
+		let nanos = Int32((date.timeIntervalSince1970 - Double(totalSeconds)) * 1_000_000_000)
+		self.seconds = totalSeconds
+		self.nanos = nanos
+	}
+
+	public var date: Date {
+		Date(timeIntervalSince1970: Double(seconds) + Double(nanos) / 1_000_000_000)
 	}
 }

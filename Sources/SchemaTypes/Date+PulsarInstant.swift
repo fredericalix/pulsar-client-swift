@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// The access mode of the Producer.
-public enum ProducerAccessMode: Sendable, Codable {
-	case shared
-	case exclusive
-	case exclusiveWithFencing
-	case waitForExclusive
+import Foundation
+
+extension Date {
+	/// The ``PulsarInstant`` representation of the date.
+	public var pulsarInstant: PulsarInstant {
+		PulsarInstant(date: self)
+	}
+
+	/// Initialize a Date with ``PulsarInstant``.
+	/// - Parameter pulsarInstant: The object to initialize with.
+	public init(pulsarInstant: PulsarInstant) {
+		self = pulsarInstant.date
+	}
 }

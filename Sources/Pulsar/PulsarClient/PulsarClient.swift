@@ -1,4 +1,4 @@
-// Copyright 2024 Felix Ruppert
+// Copyright 2025 Felix Ruppert
 //
 // Licensed under the Apache License, Version 2.0 (the License );
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 import Logging
 import NIO
+@_exported import SchemaTypes
 
 /// The core Pulsar Client used to connect to the server. All control of the library, like consumers and producers and its settings are controlled via the Client.
 public final actor PulsarClient {

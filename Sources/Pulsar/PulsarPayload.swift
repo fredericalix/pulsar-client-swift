@@ -1,4 +1,4 @@
-// Copyright 2024 Felix Ruppert
+// Copyright 2025 Felix Ruppert
 //
 // Licensed under the Apache License, Version 2.0 (the License );
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,56 @@
 import Foundation
 import NIOCore
 import NIOFoundationCompat
+import SchemaTypes
 
 /// The Pulsar Payload protocol enables types to be used as a payload of a Pulsar Message.
 public protocol PulsarPayload: Sendable {
 	func encode() -> ByteBuffer
 	static func decode(from buffer: ByteBuffer) throws -> Self
+}
+
+extension PulsarInstant: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
+	public func encode() -> ByteBuffer {
+		var buffer = ByteBufferAllocator().buffer(capacity: 12)
+		buffer.writeInteger(seconds)
+		buffer.writeInteger(nanos)
+		return buffer
+	}
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
+	public static func decode(from buffer: ByteBuffer) throws -> PulsarInstant {
+		var mutableBuffer = buffer
+		guard let seconds = mutableBuffer.readInteger(as: Int64.self) else {
+			throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Failed to decode seconds."))
+		}
+		guard let nanos = mutableBuffer.readInteger(as: Int32.self) else {
+			throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Failed to decode nanos."))
+		}
+		return PulsarInstant(seconds: seconds, nanos: nanos)
+
+	}
+
+}
+
+extension PulsarTimestamp: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
+	public func encode() -> ByteBuffer {
+		pulsarDate.encode()
+	}
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
+	public static func decode(from buffer: ByteBuffer) throws -> PulsarTimestamp {
+		let timestamp = try Int64.decode(from: buffer)
+		return PulsarTimestamp(timestamp: timestamp)
+	}
+
 }
 
 extension Data: PulsarPayload {
