@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import Foundation
+public struct Message<T: PulsarPayload>: Sendable {
+	public let payload: T
 
-public struct Message: Sendable {
-	public let payload: any PulsarPayload
-
-	public init(payload: any PulsarPayload) {
+	public init(payload: T) {
 		self.payload = payload
 	}
 }

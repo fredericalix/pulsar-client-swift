@@ -74,34 +74,23 @@ extension PulsarClient {
 		}
 	}
 
-	private func reattachProducers(
+	private nonisolated func reattachProducers(
 		oldProducers: [UInt64: ProducerCache],
 		host: String
 	) async throws {
-		guard let _ = connectionPool[host] else {
+		guard let _ = await connectionPool[host] else {
 			throw PulsarClientError.topicLookupFailed
 		}
 		logger.debug("Re-attaching \(oldProducers.count) producers...")
 		for (_, producerCache) in oldProducers {
 			let oldProducer = producerCache.producer
 			let topic = oldProducer.topic
-			let accessMode = oldProducer.accessMode
-			let producerID = oldProducer.producerID
-			let onClosed = oldProducer.onClosed
-			let oldSchema = oldProducer.schema
 
 			logger.info("Reconnection producerID \(producerCache.producerID) to topic \(topic)")
 
 			do {
-				_ = try await producer(
-					topic: topic,
-					accessMode: accessMode,
-					schema: oldSchema,
-					producerID: producerID,
-					connectionString: host,
-					existingProducer: oldProducer,
-					onClosed: onClosed
-				)
+				try await oldProducer.handleClosing()
+
 			} catch {
 				logger.error("Failed to re-attach producer for topic \(topic): \(error)")
 
@@ -114,36 +103,23 @@ extension PulsarClient {
 		}
 	}
 
-	private func reattachConsumers(
+	private nonisolated func reattachConsumers(
 		oldConsumers: [UInt64: ConsumerCache],
 		host: String
 	) async throws {
-		guard let _ = connectionPool[host] else {
+		guard let _ = await connectionPool[host] else {
 			throw PulsarClientError.topicLookupFailed
 		}
 		logger.debug("Re-attaching \(oldConsumers.count) consumers...")
 		for (_, consumerCache) in oldConsumers {
 			let oldConsumer = consumerCache.consumer
 			let topic = oldConsumer.topic
-			let subscription = oldConsumer.subscriptionName
-			let consumerID = oldConsumer.consumerID
-			let subscriptionType = oldConsumer.subscriptionType
-			let subscriptionMode = oldConsumer.subscriptionMode
-			let oldSchema = oldConsumer.schema
 
 			logger.info("Re-subscribing consumerID \(consumerCache.consumerID) for topic \(topic)")
 
 			do {
-				_ = try await consumer(
-					topic: topic,
-					subscription: subscription,
-					subscriptionType: subscriptionType,
-					schema: oldSchema,
-					subscriptionMode: subscriptionMode,
-					consumerID: consumerID,
-					connectionString: host,
-					existingConsumer: oldConsumer
-				)
+				try await oldConsumer.handleClosing()
+
 			} catch {
 				logger.error("Failed to re-subscribe consumer for topic \(topic): \(error)")
 

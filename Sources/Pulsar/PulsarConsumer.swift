@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /// A Pulsar Consumer, used to asynchronously consume messages from a topic.
-public final class PulsarConsumer: AsyncSequence, Sendable {
+public final class PulsarConsumer<T: PulsarPayload>: AsyncSequence, Sendable, AnyConsumer {
 	public let consumerID: UInt64
 	let autoAcknowledge: Bool
 	let topic: String
@@ -23,12 +23,12 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 	let schema: PulsarSchema
 	let stateManager = ConsumerStateHandler()
 
-	private let stream: AsyncThrowingStream<Message, Error>
-	let continuation: AsyncThrowingStream<Message, Error>.Continuation
+	private let stream: AsyncThrowingStream<Message<T>, Error>
+	let continuation: AsyncThrowingStream<Message<T>, Error>.Continuation
 
 	/// Used to consume messages.
 	/// - Returns: The queue where the messages will land.
-	public func makeAsyncIterator() -> AsyncThrowingStream<Message, Error>.AsyncIterator {
+	public func makeAsyncIterator() -> AsyncThrowingStream<Message<T>, Error>.AsyncIterator {
 		stream.makeAsyncIterator()
 	}
 
@@ -41,7 +41,7 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 	     subscriptionMode: SubscriptionMode,
 	     schema: PulsarSchema
 	) {
-		var cont: AsyncThrowingStream<Message, Error>.Continuation!
+		var cont: AsyncThrowingStream<Message<T>, Error>.Continuation!
 		stream = AsyncThrowingStream { c in
 			cont = c
 		}
@@ -56,6 +56,28 @@ public final class PulsarConsumer: AsyncSequence, Sendable {
 		Task {
 			await self.stateManager.setHandler(handler)
 		}
+	}
+
+	func handleMessasge(_ pulsarMessage: PulsarMessage) {
+		if let payload = pulsarMessage.payload {
+			do {
+				let typedPayload = try schema.decodePayload(payload)
+				guard let payloadT = typedPayload as? T else {
+					// TODO: Handle cast error
+					return
+				}
+				continuation.yield(
+					Message(payload: payloadT)
+				)
+			} catch {
+				// TODO: Handle decoding error
+			}
+		}
+	}
+
+	func handleClosing() async throws {
+		let handler = await stateManager.getHandler()
+		_ = try await handler.client.consumer(topic: topic, subscription: subscriptionName, subscriptionType: subscriptionType, consumerID: consumerID, existingConsumer: self)
 	}
 
 	/// Close the consumer

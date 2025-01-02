@@ -37,15 +37,15 @@ struct PulsarExample {
 			print("Client closed")
 			throw error
 		}
-		let consumer = try await client.consumer(topic: "persistent://public/default/my-topic2", subscription: "test", subscriptionType: .shared, schema: .string)
+		let consumer = try await client.consumer(topic: "persistent://public/default/my-topic2", subscription: "test", subscriptionType: .shared, schema: .string) as PulsarConsumer<String>
 		Task {
 			do {
 				for try await message in consumer {
 					// Fix an concurrency false-positive in Swift 5.10 - It's only demo code, so no issue
 					#if compiler(>=6)
 						msgCount += 1
-						let stringPayload = message.payload as! String
-					print("Received message in the exec: \(stringPayload)")
+						let stringPayload = message.payload
+						print("Received message in the exec: \(stringPayload)")
 						if msgCount == 2 {
 							try await consumer.close()
 							print("Closed consumer")
@@ -59,11 +59,11 @@ struct PulsarExample {
 
 		let producer = try await client.producer(topic: "persistent://public/default/my-topic1", accessMode: .shared, schema: .string) { _ in
 			print("Produer closed")
-		}
+		} as PulsarProducer<String>
 		Task {
 			while true {
 				do {
-					let testMsg = "Hello from Swift".data(using: .utf8)!
+					let testMsg = "Hello from Swift"
 					try await producer.asyncSend(message: Message(payload: testMsg))
 					try await Task.sleep(for: .seconds(5))
 					print("we try to send a message here")

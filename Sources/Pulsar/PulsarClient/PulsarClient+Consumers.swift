@@ -25,7 +25,7 @@ public extension PulsarClient {
 	/// - Returns: The newly created consumer.
 	///
 	/// - Warning: `connectionString` and `existingConsumer` are there for internal implementation and shouldn't be used by the library user.
-	func consumer(
+	func consumer<T: PulsarPayload>(
 		topic: String,
 		subscription: String,
 		subscriptionType: SubscriptionType,
@@ -33,7 +33,7 @@ public extension PulsarClient {
 		subscriptionMode: SubscriptionMode = .durable,
 		consumerID: UInt64? = nil,
 		connectionString: String? = nil,
-		existingConsumer: PulsarConsumer? = nil) async throws -> PulsarConsumer {
+		existingConsumer: PulsarConsumer<T>? = nil) async throws -> PulsarConsumer<T> {
 		var connectionString = connectionString ?? initialURL
 		var topicFound = false
 		// Possibly do multiple lookups if the broker says "redirect"

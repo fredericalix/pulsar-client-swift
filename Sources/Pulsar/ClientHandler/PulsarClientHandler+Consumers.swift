@@ -27,13 +27,31 @@ extension PulsarClientHandler {
 		context.writeAndFlush(wrapOutboundOut(pulsarMessage), promise: nil)
 	}
 
-	func subscribe(topic: String,
-	               subscription: String,
-	               consumerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
-	               schema: PulsarSchema,
-	               existingConsumer: PulsarConsumer? = nil,
-	               subscriptionType: SubscriptionType,
-	               subscriptionMode: SubscriptionMode) async throws -> PulsarConsumer {
+	/// If the server returned a message payload, deliver it to the correct consumer.
+	func handlePayloadMessage(context: ChannelHandlerContext, message: PulsarMessage) {
+		let msgCmd = message.command.message
+		guard let receivingConsumerCache = consumers[msgCmd.consumerID] else {
+			logger.error("Received a message for unknown consumerID \(msgCmd.consumerID)")
+			return
+		}
+		let receivingConsumer = receivingConsumerCache.consumer
+		receivingConsumer.handleMessasge(message)
+		if receivingConsumer.autoAcknowledge {
+			acknowledge(context: context, message: message)
+		}
+		// Request more messages if we hit our threshold as per Pulsar Protocol
+		if receivingConsumerCache.messageCount == 500 {
+			flow(consumerID: receivingConsumerCache.consumerID)
+		}
+	}
+
+	func subscribe<T: PulsarPayload>(topic: String,
+	                                 subscription: String,
+	                                 consumerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
+	                                 schema: PulsarSchema,
+	                                 existingConsumer: PulsarConsumer<T>? = nil,
+	                                 subscriptionType: SubscriptionType,
+	                                 subscriptionMode: SubscriptionMode) async throws -> PulsarConsumer<T> {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .subscribe
 		var subscribeCmd = Pulsar_Proto_CommandSubscribe()
@@ -63,7 +81,7 @@ extension PulsarClientHandler {
 
 		// We add the consumer to the pool before connection, so in case the subscription attempt fails and we
 		// need to reconnect, we already know the consumers we wanted.
-		let consumer: PulsarConsumer
+		let consumer: PulsarConsumer<T>
 		if let existingConsumer {
 			consumer = existingConsumer
 			await consumer.stateManager.setHandler(self)
@@ -147,7 +165,7 @@ extension PulsarClientHandler {
 		Task {
 			do {
 				logger.info("Attempting to re-subscribe consumer for \(consumer.topic)...")
-				_ = try await client.consumer(topic: consumer.topic, subscription: consumer.subscriptionName, subscriptionType: .shared, consumerID: consumerID, existingConsumer: consumer)
+				try await consumer.handleClosing()
 				logger.info("Successfully re-subscribed \(consumer.topic)")
 			} catch {
 				logger.error("Re-subscribe failed for \(consumer.topic): \(error)")

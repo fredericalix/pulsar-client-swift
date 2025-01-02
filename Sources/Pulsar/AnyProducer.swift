@@ -1,4 +1,4 @@
-// Copyright 2024 Felix Ruppert
+// Copyright 2025 Felix Ruppert
 //
 // Licensed under the Apache License, Version 2.0 (the License );
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-class ProducerCache {
-	let producerID: UInt64
-	let producer: any AnyProducer
-	var messageCount: Int = 0
-	let createRequestID: UInt64
+protocol AnyProducer: AnyObject {
+	var producerID: UInt64 { get }
+	var topic: String { get }
+	var stateManager: ProducerStateManager { get }
+	var accessMode: ProducerAccessMode { get }
+	var schema: PulsarSchema { get }
+	var onClosed: (@Sendable (any Error) throws -> Void)? { get }
 
-	init(producerID: UInt64, producer: any AnyProducer, createRequestID: UInt64) {
-		self.producerID = producerID
-		self.producer = producer
-		self.createRequestID = createRequestID
-	}
+	func handleClosing() async throws
 }

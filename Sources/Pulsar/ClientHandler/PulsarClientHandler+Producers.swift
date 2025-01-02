@@ -76,7 +76,7 @@ extension PulsarClientHandler {
 		Task {
 			do {
 				logger.info("Attempting to reconnect producer for \(producer.topic)...")
-				_ = try await client.producer(topic: producer.topic, accessMode: producer.accessMode, producerID: producerID, existingProducer: producer, onClosed: producer.onClosed)
+				try await producer.handleClosing()
 				logger.info("Successfully reconnected \(producer.topic)")
 			} catch {
 				logger.error("Reconnect failed for \(producer.topic): \(error)")
@@ -84,9 +84,9 @@ extension PulsarClientHandler {
 		}
 	}
 
-	func send(message: Message, producerID: UInt64, producerName: String, isSyncSend: Bool) async throws {
+	func send(message: Message<some PulsarPayload>, producerID: UInt64, producerName: String, isSyncSend: Bool) async throws {
 		let data = message.payload
-		let payload = try ByteBuffer(pulsarPayload: data)
+		let payload = data.encode()
 		var baseCmd = Pulsar_Proto_BaseCommand()
 		baseCmd.type = .send
 		var sendCmd = Pulsar_Proto_CommandSend()
@@ -114,13 +114,13 @@ extension PulsarClientHandler {
 		}
 	}
 
-	func createProducer(topic: String,
-	                    accessMode: ProducerAccessMode,
-	                    schema: PulsarSchema,
-	                    producerName: String? = nil,
-	                    producerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
-	                    existingProducer: PulsarProducer? = nil,
-	                    onClosed: (@Sendable (any Error) throws -> Void)?) async throws -> PulsarProducer {
+	func createProducer<T: PulsarPayload>(topic: String,
+	                                      accessMode: ProducerAccessMode,
+	                                      schema: PulsarSchema,
+	                                      producerName: String? = nil,
+	                                      producerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
+	                                      existingProducer: PulsarProducer<T>? = nil,
+	                                      onClosed: (@Sendable (any Error) throws -> Void)?) async throws -> PulsarProducer<T> {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .producer
 		var producerCmd = Pulsar_Proto_CommandProducer()
@@ -149,7 +149,7 @@ extension PulsarClientHandler {
 
 		// We add the producers to the pool before connection, so in case the create attempt fails and we
 		// need to reconnect, we already know the producers we wanted.
-		let producer: PulsarProducer
+		let producer: PulsarProducer<T>
 		if let existingProducer {
 			producer = existingProducer
 			await producer.stateManager.setHandler(self)

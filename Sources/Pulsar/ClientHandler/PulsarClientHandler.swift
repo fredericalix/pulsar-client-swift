@@ -224,38 +224,6 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		}
 	}
 
-	/// If the server returned a message payload, deliver it to the correct consumer.
-	func handlePayloadMessage(context: ChannelHandlerContext, message: PulsarMessage) {
-		let msgCmd = message.command.message
-		guard let receivingConsumerCache = consumers[msgCmd.consumerID] else {
-			logger.error("Received a message for unknown consumerID \(msgCmd.consumerID)")
-			return
-		}
-		let receivingConsumer = receivingConsumerCache.consumer
-		if let payload = message.payload {
-			do {
-				let typedPayload = try receivingConsumer.schema.decodePayload(payload)
-				
-				receivingConsumer.continuation.yield(
-					Message(payload: typedPayload)
-				)
-				
-				receivingConsumerCache.messageCount += 1
-				
-			} catch {
-				logger.error("Failed to decode payload: \(error)")
-				// In a real app, you might want to handle or dead-letter the message
-			}
-		}
-		if receivingConsumer.autoAcknowledge {
-			acknowledge(context: context, message: message)
-		}
-		// Request more messages if we hit our threshold as per Pulsar Protocol
-		if receivingConsumerCache.messageCount == 500 {
-			flow(consumerID: receivingConsumerCache.consumerID)
-		}
-	}
-
 	func topicLookupFailureType(context: ChannelHandlerContext, message: Pulsar_Proto_CommandLookupTopicResponse, promise: EventLoopPromise<Void>) {
 		switch message.error {
 			case .unknownError:

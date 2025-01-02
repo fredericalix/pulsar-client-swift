@@ -25,15 +25,15 @@ public extension PulsarClient {
 	/// - Returns: The newly created producer.
 	///
 	/// - Warning: `connectionString` and `existingProducer` are there for internal implementation and shouldn't be used by the library user.
-	func producer(
+	func producer<T>(
 		topic: String,
 		accessMode: ProducerAccessMode,
 		schema: PulsarSchema = .bytes,
 		producerID: UInt64? = nil,
 		producerName: String? = nil,
 		connectionString: String? = nil,
-		existingProducer: PulsarProducer? = nil,
-		onClosed: (@Sendable (any Error) throws -> Void)?) async throws -> PulsarProducer {
+		existingProducer: PulsarProducer<T>? = nil,
+		onClosed: (@Sendable (any Error) throws -> Void)?) async throws -> PulsarProducer<T> {
 		var connectionString = connectionString ?? initialURL
 		var topicFound = false
 

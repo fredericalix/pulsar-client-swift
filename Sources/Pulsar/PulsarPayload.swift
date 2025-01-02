@@ -27,7 +27,7 @@ extension Data: PulsarPayload {
 	}
 
 	public static func decode(from buffer: ByteBuffer) throws -> Data {
-		return Data(buffer: buffer)
+		Data(buffer: buffer)
 	}
 }
 
@@ -91,6 +91,7 @@ extension Int32: PulsarPayload {
 	public func encode() -> ByteBuffer {
 		try! ByteBuffer(pulsarPayload: self)
 	}
+
 	public static func decode(from buffer: ByteBuffer) throws -> Int32 {
 		var buffer = buffer
 		guard let value = buffer.readInteger(as: Int32.self) else {

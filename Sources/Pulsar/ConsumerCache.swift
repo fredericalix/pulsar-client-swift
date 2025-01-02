@@ -14,10 +14,10 @@
 
 class ConsumerCache {
 	let consumerID: UInt64
-	let consumer: PulsarConsumer
+	let consumer: any AnyConsumer
 	var messageCount: Int = 0
 
-	init(consumerID: UInt64, consumer: PulsarConsumer) {
+	init(consumerID: UInt64, consumer: any AnyConsumer) {
 		self.consumerID = consumerID
 		self.consumer = consumer
 	}
