@@ -1,4 +1,4 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.0
 
 import PackageDescription
 
@@ -40,7 +40,7 @@ let package = Package(
 			dependencies: ["Pulsar"]
 		)
 	],
-	swiftLanguageVersions: [.version("6"), .v5]
+	swiftLanguageModes: [.v6]
 )
 
 for target in package.targets where target.type != .plugin {
