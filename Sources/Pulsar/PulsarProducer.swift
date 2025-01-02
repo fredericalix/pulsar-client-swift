@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// A Pulsar producer, used to publish messages to a topic.
+/// A Pulsar producer used to publish messages to a specific topic.
+///
+/// This component enables sending messages to a Pulsar topic. It supports configuration
+/// for schema, and other publishing parameters to ensure efficient and reliable
+/// message delivery.
 public final class PulsarProducer<T: PulsarPayload>: Sendable, AnyProducer {
 	public let producerID: UInt64
 	let topic: String

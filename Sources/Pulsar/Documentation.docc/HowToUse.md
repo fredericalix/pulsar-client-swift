@@ -1,8 +1,9 @@
-# Get started
+# Get Started
 
-This section provides an overview how to quickly get the library up and running.
+Welcome to the Swift Pulsar Client! This guide will help you get started with the library quickly by walking you through the basic setup and usage for both consuming and producing messages.
 
-## Consumer
+## Consumer Example
+The following example demonstrates how to create a Pulsar consumer to receive messages from a specific topic.
 
 ```swift
 import Logging
@@ -12,43 +13,115 @@ import Pulsar
 @main
 struct PulsarExample {
 	static func main() async throws {
-		// You do not need to provide your own EventLoopGroup.
+		// Set up logging and event loop group
 		let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 		LoggingSystem.bootstrap { label in
 			var handler = StreamLogHandler.standardOutput(label: label)
 			handler.logLevel = .trace
 			return handler
 		}
+
 		let connector = PulsarExample()
 		try await connector.connect(eventLoopGroup: eventLoopGroup)
 	}
 
 	func connect(eventLoopGroup: EventLoopGroup) async throws {
 		var msgCount = 0
-		// Create a Pulsar client and connect to the server at localhost:6650.
+
+		// Create a Pulsar client
 		let client = await PulsarClient(host: "localhost", port: 6650)
 
-		// Create a consumer at the specified topic with the wanted subscription name.
-		let consumer = try await client.consumer(topic: "persistent://public/default/my-topic", subscription: "test", subscriptionType: .shared)
+		// Set up a consumer
+		let consumer = try await client.consumer(
+			topic: "persistent://public/default/my-topic",
+			subscription: "test",
+			subscriptionType: .shared
+		)
+
+		// Consume messages
 		Task {
 			do {
-				// Consume messages and do a thing, everytime you receive a message.
 				for try await message in consumer {
 					msgCount += 1
-					print("Received message in the exec: \(String(decoding: message.data, as: UTF8.self))")
+					print("Received message: \(String(decoding: message.data, as: UTF8.self))")
 					if msgCount == 2 {
 						try await consumer.close()
 						print("Closed consumer")
 					}
 				}
 			} catch {
-				// The consumer should never close automatically, only when you call consumer.close()
-				print("Whooops we closed, this should never happen automatically.")
+				print("Unexpected consumer closure: \(error)")
 			}
 		}
-		// Keep the application running.
+
+		// Keep the application running
 		let keepAlivePromise = eventLoopGroup.next().makePromise(of: Void.self)
 		try await keepAlivePromise.futureResult.get()
 	}
 }
 ```
+
+## Producer Example
+This example shows how to create a producer to send messages to a specific Pulsar topic.
+
+```swift
+import Foundation
+import Logging
+import NIO
+import Pulsar
+
+@main
+struct PulsarExample {
+	static func main() async throws {
+		// Set up logging and event loop group
+		let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+		LoggingSystem.bootstrap { label in
+			var handler = StreamLogHandler.standardOutput(label: label)
+			handler.logLevel = .trace
+			return handler
+		}
+
+		let connector = PulsarExample()
+		try await connector.connect(eventLoopGroup: eventLoopGroup)
+	}
+
+	func connect(eventLoopGroup: EventLoopGroup) async throws {
+		let client = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 10) { error in
+			print("Client closed due to error: \(error)")
+			exit(0)
+		}
+
+		// Set up a producer
+		let producer = try await client.producer(
+			topic: "persistent://public/default/my-topic1",
+			accessMode: .shared,
+			schema: .string
+		) { _ in
+			print("Producer closed")
+		} as PulsarProducer<String>
+
+		// Send messages in a loop
+		Task {
+			while true {
+				do {
+					let message = "Hello from Swift"
+					try await producer.asyncSend(message: Message(payload: message))
+					print("Sent message: \(message)")
+					try await Task.sleep(for: .seconds(5))
+				} catch {
+					print("Failed to send message: \(error)")
+				}
+			}
+		}
+
+		// Keep the application running
+		let keepAlivePromise = eventLoopGroup.next().makePromise(of: Void.self)
+		try await keepAlivePromise.futureResult.get()
+	}
+}
+```
+
+## Additional Features
+- **Reconnection Handling**: Configure the reconnection limit with the `reconnectLimit` parameter when initializing the `PulsarClient`.
+- **Schema Support**: Specify schemas like `.string` for type-safe message handling.
+- **Logging**: Use Swift's `Logging` package to customize log levels and outputs.

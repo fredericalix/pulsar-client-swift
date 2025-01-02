@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Supported Pulsar schemas by the library.
 public enum PulsarSchema: String, Equatable, Sendable {
 	case bytes
 	case string

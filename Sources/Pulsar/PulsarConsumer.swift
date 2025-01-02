@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// A Pulsar Consumer, used to asynchronously consume messages from a topic.
+/// A Pulsar consumer used to asynchronously consume messages from a specific topic.
+///
+/// This class provides support for consuming messages from a Pulsar topic using various subscription types.
+/// It conforms to `AsyncSequence`, enabling iteration over received messages in an asynchronous context.
+/// Generic `T` represents the type of payload for the messages, conforming to `PulsarPayload`.
 public final class PulsarConsumer<T: PulsarPayload>: AsyncSequence, Sendable, AnyConsumer {
 	public let consumerID: UInt64
 	let autoAcknowledge: Bool

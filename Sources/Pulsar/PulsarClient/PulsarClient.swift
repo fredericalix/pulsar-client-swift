@@ -16,7 +16,14 @@ import Logging
 import NIO
 @_exported import SchemaTypes
 
-/// The core Pulsar Client used to connect to the server. All control of the library, like consumers and producers and its settings are controlled via the Client.
+/// The core Pulsar Client used to connect to the server.
+///
+/// This actor manages the connection to a Pulsar server and provides functionality
+/// for creating and managing producers and consumers. It also handles configuration
+/// of connection parameters and retry mechanisms.
+///
+/// All interactions with the Pulsar messaging system, such as sending or receiving messages,
+/// are controlled through this client.
 public final actor PulsarClient {
 	let logger = Logger(label: "PulsarClient")
 	let group: EventLoopGroup

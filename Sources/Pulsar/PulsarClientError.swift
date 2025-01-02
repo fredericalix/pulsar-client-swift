@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The errors thrown by the library.
 public enum PulsarClientError: Error, Equatable {
 	case clientClosed
 	case networkError
