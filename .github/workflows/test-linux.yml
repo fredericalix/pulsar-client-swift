@@ -1,0 +1,24 @@
+name: Test on Linux
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Swift ${{ matrix.swift }} on ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        swift: ["5.10", "6.0"]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: NeedleInAJayStack/setup-swift@e1e16eadfa117a794ccda27f60935a0c9e143df5
+      with:
+        swift-version: "6"
+    - uses: actions/checkout@v4
+    - name: Lint
+      run: swift format lint . -rs
+    - name: Run tests
+      run: swift test
