@@ -1,5 +1,4 @@
 // swift-tools-version: 5.10
-// The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
@@ -7,7 +6,6 @@ let package = Package(
 	name: "pulsar-client-swift",
 	platforms: [.macOS(.v13), .iOS(.v16), .tvOS(.v16), .watchOS(.v9)],
 	products: [
-		// Products define the executables and libraries a package produces, making them visible to other packages.
 		.library(
 			name: "Pulsar",
 			targets: ["Pulsar"]
@@ -20,8 +18,6 @@ let package = Package(
 		.package(url: "https://github.com/apple/swift-log.git", from: "1.6.1")
 	],
 	targets: [
-		// Targets are the basic building blocks of a package, defining a module or a test suite.
-		// Targets can depend on other targets in this package and products from dependencies.
 		.target(
 			name: "Pulsar",
 			dependencies: [
@@ -46,3 +42,9 @@ let package = Package(
 	],
 	swiftLanguageVersions: [.version("6"), .v5]
 )
+
+for target in package.targets where target.type != .plugin {
+	var settings = target.swiftSettings ?? []
+	settings.append(.enableUpcomingFeature("MemberImportVisibility"))
+	target.swiftSettings = settings
+}
