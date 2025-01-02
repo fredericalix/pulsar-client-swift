@@ -16,26 +16,37 @@ import Foundation
 import NIOCore
 import NIOFoundationCompat
 
+/// The Pulsar Payload protocol enables types to be used as a payload of a Pulsar Message.
 public protocol PulsarPayload: Sendable {
 	func encode() -> ByteBuffer
 	static func decode(from buffer: ByteBuffer) throws -> Self
 }
 
 extension Data: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
 	public func encode() -> ByteBuffer {
 		try! ByteBuffer(pulsarPayload: self)
 	}
-
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
 	public static func decode(from buffer: ByteBuffer) throws -> Data {
 		Data(buffer: buffer)
 	}
 }
 
 extension String: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
 	public func encode() -> ByteBuffer {
 		try! ByteBuffer(pulsarPayload: self)
 	}
-
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
 	public static func decode(from buffer: ByteBuffer) throws -> String {
 		var buffer = buffer
 		guard let string = buffer.readString(length: buffer.readableBytes) else {
@@ -46,10 +57,15 @@ extension String: PulsarPayload {
 }
 
 extension Bool: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
 	public func encode() -> ByteBuffer {
 		try! ByteBuffer(pulsarPayload: self)
 	}
-
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
 	public static func decode(from buffer: ByteBuffer) throws -> Bool {
 		var buffer = buffer
 		guard let value = buffer.readInteger(as: UInt8.self) else {
@@ -60,10 +76,15 @@ extension Bool: PulsarPayload {
 }
 
 extension Int8: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
 	public func encode() -> ByteBuffer {
 		try! ByteBuffer(pulsarPayload: self)
 	}
-
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
 	public static func decode(from buffer: ByteBuffer) throws -> Int8 {
 		var buffer = buffer
 		guard let value = buffer.readInteger(as: Int8.self) else {
@@ -74,10 +95,15 @@ extension Int8: PulsarPayload {
 }
 
 extension Int16: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
 	public func encode() -> ByteBuffer {
 		try! ByteBuffer(pulsarPayload: self)
 	}
-
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
 	public static func decode(from buffer: ByteBuffer) throws -> Int16 {
 		var buffer = buffer
 		guard let value = buffer.readInteger(as: Int16.self) else {
@@ -88,10 +114,15 @@ extension Int16: PulsarPayload {
 }
 
 extension Int32: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
 	public func encode() -> ByteBuffer {
 		try! ByteBuffer(pulsarPayload: self)
 	}
-
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
 	public static func decode(from buffer: ByteBuffer) throws -> Int32 {
 		var buffer = buffer
 		guard let value = buffer.readInteger(as: Int32.self) else {
@@ -102,10 +133,15 @@ extension Int32: PulsarPayload {
 }
 
 extension Int64: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
 	public func encode() -> ByteBuffer {
 		try! ByteBuffer(pulsarPayload: self)
 	}
-
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
 	public static func decode(from buffer: ByteBuffer) throws -> Int64 {
 		var buffer = buffer
 		guard let value = buffer.readInteger(as: Int64.self) else {
@@ -116,10 +152,15 @@ extension Int64: PulsarPayload {
 }
 
 extension Float: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
 	public func encode() -> ByteBuffer {
 		try! ByteBuffer(pulsarPayload: self)
 	}
-
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
 	public static func decode(from buffer: ByteBuffer) throws -> Float {
 		var buffer = buffer
 		guard let bitPattern = buffer.readInteger(as: UInt32.self) else {
@@ -130,10 +171,16 @@ extension Float: PulsarPayload {
 }
 
 extension Double: PulsarPayload {
+	/// Encode into a ByteBuffer.
+	/// - Returns: The ByteBuffer.
 	public func encode() -> ByteBuffer {
 		try! ByteBuffer(pulsarPayload: self)
 	}
 
+	/// Decode from a ByteBuffer.
+	/// - Parameter buffer: The buffer to decode.
+	/// - Returns: The decoded type.
+	/// - Throws: DecodingError.dataCorrupted when the decoding fails.
 	public static func decode(from buffer: ByteBuffer) throws -> Double {
 		var buffer = buffer
 		guard let bitPattern = buffer.readInteger(as: UInt64.self) else {
