@@ -33,7 +33,7 @@ struct PulsarExample {
 	func connect(eventLoopGroup: EventLoopGroup) async throws {
 		var msgCount = 0
 
-		let client = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 2) { error in
+		let client = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 10) { error in
 			do {
 				throw error
 			} catch {

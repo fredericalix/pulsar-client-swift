@@ -61,16 +61,12 @@ public final class PulsarConsumer<T: PulsarPayload>: AsyncSequence, Sendable, An
 	func handleMessasge(_ pulsarMessage: PulsarMessage) {
 		if let payload = pulsarMessage.payload {
 			do {
-				let typedPayload = try schema.decodePayload(payload)
-				guard let payloadT = typedPayload as? T else {
-					// TODO: Handle cast error
-					return
-				}
+				let typedPayload = try T.decode(from: payload)
 				continuation.yield(
-					Message(payload: payloadT)
+					Message(payload: typedPayload)
 				)
 			} catch {
-				// TODO: Handle decoding error
+				fail(error: error)
 			}
 		}
 	}
