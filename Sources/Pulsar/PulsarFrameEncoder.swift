@@ -56,7 +56,7 @@ final class PulsarFrameEncoder: MessageToByteEncoder {
 
 			// Reserve space for checksum (we'll come back and fill this in later)
 			let checksumIndex = frameBuffer.writerIndex
-			frameBuffer.writeInteger(UInt32(0)) // Placeholder for checksum
+			frameBuffer.writeInteger(UInt32(0))  // Placeholder for checksum
 
 			// Start checksum computation from here
 			let checksumStartIndex = frameBuffer.writerIndex

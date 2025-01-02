@@ -45,13 +45,15 @@ extension PulsarClientHandler {
 		}
 	}
 
-	func subscribe<T: PulsarPayload>(topic: String,
-	                                 subscription: String,
-	                                 consumerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
-	                                 schema: PulsarSchema,
-	                                 existingConsumer: PulsarConsumer<T>? = nil,
-	                                 subscriptionType: SubscriptionType,
-	                                 subscriptionMode: SubscriptionMode) async throws -> PulsarConsumer<T> {
+	func subscribe<T: PulsarPayload>(
+		topic: String,
+		subscription: String,
+		consumerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
+		schema: PulsarSchema,
+		existingConsumer: PulsarConsumer<T>? = nil,
+		subscriptionType: SubscriptionType,
+		subscriptionMode: SubscriptionMode
+	) async throws -> PulsarConsumer<T> {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .subscribe
 		var subscribeCmd = Pulsar_Proto_CommandSubscribe()
@@ -59,16 +61,17 @@ extension PulsarClientHandler {
 		subscribeCmd.subscription = subscription
 		let requestID = UInt64.random(in: 0 ..< UInt64.max)
 		subscribeCmd.requestID = requestID
-		subscribeCmd.subType = switch subscriptionType {
-			case .exclusive:
-				.exclusive
-			case .failover:
-				.failover
-			case .keyShared:
-				.keyShared
-			case .shared:
-				.shared
-		}
+		subscribeCmd.subType =
+			switch subscriptionType {
+				case .exclusive:
+					.exclusive
+				case .failover:
+					.failover
+				case .keyShared:
+					.keyShared
+				case .shared:
+					.shared
+			}
 		subscribeCmd.consumerID = consumerID
 		if let schemaCmd = getSchemaCmd(schema: schema) {
 			subscribeCmd.schema = schemaCmd
@@ -99,9 +102,11 @@ extension PulsarClientHandler {
 		consumers[consumerID] = ConsumerCache(consumerID: consumerID, consumer: consumer)
 
 		// Write/flush on the event loop, can be called externally, so we must put it on the eventLoop explicitly.
-		try await correlationMap.context!.eventLoop.submit {
-			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
-		}.get()
+		try await correlationMap.context!.eventLoop
+			.submit {
+				self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
+			}
+			.get()
 
 		// Wait for the broker to respond with success (or error)
 		try await promise.futureResult.get()
@@ -110,9 +115,11 @@ extension PulsarClientHandler {
 		logger.info("Successfully subscribed to \(topic) with subscription: \(subscription)")
 
 		// Issue initial flow permit
-		try await correlationMap.context!.eventLoop.submit {
-			self.flow(consumerID: consumerID, isInitial: true)
-		}.get()
+		try await correlationMap.context!.eventLoop
+			.submit {
+				self.flow(consumerID: consumerID, isInitial: true)
+			}
+			.get()
 
 		return consumer
 	}
@@ -132,7 +139,7 @@ extension PulsarClientHandler {
 		correlationMap.context?.writeAndFlush(wrapOutboundOut(pulsarMessage), promise: nil)
 	}
 
-	public func closeConsumer(consumerID: UInt64) async throws {
+	func closeConsumer(consumerID: UInt64) async throws {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .closeConsumer
 		var closeCmd = Pulsar_Proto_CommandCloseConsumer()
@@ -146,14 +153,16 @@ extension PulsarClientHandler {
 		baseCommand.closeConsumer = closeCmd
 		let pulsarMessage = PulsarMessage(command: baseCommand)
 
-		try await correlationMap.context!.eventLoop.submit {
-			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
-		}.get()
+		try await correlationMap.context!.eventLoop
+			.submit {
+				self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
+			}
+			.get()
 
 		try await promise.futureResult.get()
 	}
 
-	/// The broker told us the consumer is being closed. We try re-subscribing.
+	/// The broker told us the consumer is being closed, we try re-subscribing.
 	func handleClosedConsumer(consumerID: UInt64) {
 		guard let consumerCache = consumers[consumerID] else {
 			logger.warning("Received closeConsumer for unknown consumerID \(consumerID)")

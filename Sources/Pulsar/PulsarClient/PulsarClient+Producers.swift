@@ -12,20 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-public extension PulsarClient {
+extension PulsarClient {
 	/// Creates a new Pulsar producer.
 	/// - Parameters:
 	///   - topic: The topic to produce to.
 	///   - accessMode: The access mode of the producer.
+	///   - schema: The Pulsar Schema to use.
 	///   - producerID: Optional: If you want to define your own producerID.
 	///   - producerName: Optional: The name of the producer. Gets auto-assigned by the server when left empty.
 	///   - connectionString: Not recommended:  Define another URL where the topic will be found. Can cause issues with connection.
 	///   - existingProducer: Not recommended: Reuse an existing producer.
 	///   - onClosed: This function will be called if the producer needs to be closed.
 	/// - Returns: The newly created producer.
+	/// - Throws: Throws an error when there is an issue that cannot be handled by internally.
 	///
 	/// - Warning: `connectionString` and `existingProducer` are there for internal implementation and shouldn't be used by the library user.
-	func producer<T>(
+	public func producer<T>(
 		topic: String,
 		accessMode: ProducerAccessMode,
 		schema: PulsarSchema = .bytes,
@@ -33,7 +35,8 @@ public extension PulsarClient {
 		producerName: String? = nil,
 		connectionString: String? = nil,
 		existingProducer: PulsarProducer<T>? = nil,
-		onClosed: (@Sendable (any Error) throws -> Void)?) async throws -> PulsarProducer<T> {
+		onClosed: (@Sendable (any Error) throws -> Void)?
+	) async throws -> PulsarProducer<T> {
 		var connectionString = connectionString ?? initialURL
 		var topicFound = false
 
@@ -62,25 +65,26 @@ public extension PulsarClient {
 		}
 		let handler = try await channel.pipeline.handler(type: PulsarClientHandler.self).get()
 
-		let producer: PulsarProducer = if let existingProducer {
-			try await handler.createProducer(
-				topic: topic,
-				accessMode: accessMode,
-				schema: schema,
-				producerName: producerName,
-				producerID: producerID!,
-				existingProducer: existingProducer,
-				onClosed: onClosed
-			)
-		} else {
-			try await handler.createProducer(
-				topic: topic,
-				accessMode: accessMode,
-				schema: schema,
-				producerName: producerName,
-				onClosed: onClosed
-			)
-		}
+		let producer: PulsarProducer =
+			if let existingProducer {
+				try await handler.createProducer(
+					topic: topic,
+					accessMode: accessMode,
+					schema: schema,
+					producerName: producerName,
+					producerID: producerID!,
+					existingProducer: existingProducer,
+					onClosed: onClosed
+				)
+			} else {
+				try await handler.createProducer(
+					topic: topic,
+					accessMode: accessMode,
+					schema: schema,
+					producerName: producerName,
+					onClosed: onClosed
+				)
+			}
 
 		return producer
 	}

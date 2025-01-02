@@ -15,8 +15,9 @@
 import Foundation
 import Logging
 import NIO
-@testable import Pulsar
 import Testing
+
+@testable import Pulsar
 
 @Suite("Client Tests", .serialized)
 struct ClientTests {

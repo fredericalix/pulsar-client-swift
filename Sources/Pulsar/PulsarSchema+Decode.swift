@@ -45,12 +45,12 @@ extension PulsarSchema {
 			case .double:
 				return try Double.decode(from: buffer)
 			case .date,
-			     .time,
-			     .timestamp,
-			     .instant,
-			     .localDate,
-			     .localTime,
-			     .localDateTime:
+				.time,
+				.timestamp,
+				.instant,
+				.localDate,
+				.localTime,
+				.localDateTime:
 				throw DecodingError.dataCorrupted(
 					DecodingError.Context(
 						codingPath: [],

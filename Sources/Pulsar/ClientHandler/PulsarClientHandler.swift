@@ -127,7 +127,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 
 		// Fail any big pending promise (like the connectionEstablished) if it’s not done
 		switch connectionPromiseState {
-			case let .inProgress(promise):
+			case .inProgress(let promise):
 				promise.fail(error)
 				connectionPromiseState = .completed
 			case .completed:
@@ -145,29 +145,30 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 			guard let self else {
 				return
 			}
-			correlationMap.context!.eventLoop.scheduleTask(in: .seconds(5)) {
-				// We only want to fail the promise if it's still there.
-				if let promise = self.correlationMap.remove(promise: type) {
-					self.logger.error("Request timed out.")
-					self.logger.trace("Failing promise for \(type)")
-					promise.fail(PulsarClientError.connectionTimeout)
-					if forceClose {
-						self.correlationMap.context!.close(mode: .all, promise: nil)
+			correlationMap.context!.eventLoop
+				.scheduleTask(in: .seconds(5)) {
+					// We only want to fail the promise if it's still there.
+					if let promise = self.correlationMap.remove(promise: type) {
+						self.logger.error("Request timed out.")
+						self.logger.trace("Failing promise for \(type)")
+						promise.fail(PulsarClientError.connectionTimeout)
+						if forceClose {
+							self.correlationMap.context!.close(mode: .all, promise: nil)
+						} else {
+							self.logger.warning("Timeout on promise for \(type) but not closing connection")
+						}
 					} else {
-						self.logger.warning("Timeout on promise for \(type) but not closing connection")
+						self.logger.trace("Promise for \(type) was already fullfilled.")
 					}
-				} else {
-					self.logger.trace("Promise for \(type) was already fullfilled.")
+					switch self.connectionPromiseState {
+						case .inProgress(let eventLoopPromise):
+							self.logger.error("Connection timed out.")
+							eventLoopPromise.fail(PulsarClientError.connectionTimeout)
+							self.correlationMap.context!.close(mode: .all, promise: nil)
+						case .completed:
+							break
+					}
 				}
-				switch self.connectionPromiseState {
-					case let .inProgress(eventLoopPromise):
-						self.logger.error("Connection timed out.")
-						eventLoopPromise.fail(PulsarClientError.connectionTimeout)
-						self.correlationMap.context!.close(mode: .all, promise: nil)
-					case .completed:
-						break
-				}
-			}
 		}
 		return promise
 	}
@@ -203,7 +204,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 	func handleConnected(context _: ChannelHandlerContext, message _: Pulsar_Proto_CommandConnected) {
 		// Only succeed if we’re still in progress
 		switch connectionPromiseState {
-			case let .inProgress(promise):
+			case .inProgress(let promise):
 				logger.info("Connected channel.")
 				promise.succeed(())
 				connectionPromiseState = .completed
@@ -224,7 +225,11 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		}
 	}
 
-	func topicLookupFailureType(context: ChannelHandlerContext, message: Pulsar_Proto_CommandLookupTopicResponse, promise: EventLoopPromise<Void>) {
+	func topicLookupFailureType(
+		context: ChannelHandlerContext,
+		message: Pulsar_Proto_CommandLookupTopicResponse,
+		promise: EventLoopPromise<Void>
+	) {
 		switch message.error {
 			case .unknownError:
 				logger.error("Unknown error occurred during topic lookup: \(message.message)")
@@ -255,7 +260,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 				manageErrors(context: context, error: PulsarClientError.serviceNotReady)
 
 			case .producerBlockedQuotaExceededError,
-			     .producerBlockedQuotaExceededException:
+				.producerBlockedQuotaExceededException:
 				logger.error("Producer blocked due to quota exceeded. Escalating to client.")
 				promise.fail(PulsarClientError.producerBlocked)
 
@@ -374,24 +379,25 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 
 		if schema != .bytes {
 			schemaCmd = Pulsar_Proto_Schema()
-			schemaCmd?.type = switch schema {
-				case .string: .string
-				case .bool: .bool
-				case .int8: .int8
-				case .int16: .int16
-				case .int32: .int32
-				case .int64: .int64
-				case .float: .float
-				case .double: .double
-				case .date: .date
-				case .time: .time
-				case .timestamp: .timestamp
-				case .instant: .instant
-				case .localDate: .localDate
-				case .localTime: .localTime
-				case .localDateTime: .localDateTime
-				case .bytes: .none
-			}
+			schemaCmd?.type =
+				switch schema {
+					case .string: .string
+					case .bool: .bool
+					case .int8: .int8
+					case .int16: .int16
+					case .int32: .int32
+					case .int64: .int64
+					case .float: .float
+					case .double: .double
+					case .date: .date
+					case .time: .time
+					case .timestamp: .timestamp
+					case .instant: .instant
+					case .localDate: .localDate
+					case .localTime: .localTime
+					case .localDateTime: .localDateTime
+					case .bytes: .none
+				}
 			// for primitive schemas, add an empty schema data, as we only support primitive schemas, no need for any logics
 			schemaCmd?.schemaData = "".data(using: .utf8)!
 			schemaCmd?.properties = []
@@ -416,9 +422,11 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		baseCommand.lookupTopic = lookupCmd
 		let pulsarMessage = PulsarMessage(command: baseCommand)
 		// Send the lookup command on the event loop
-		try await correlationMap.context!.eventLoop.submit {
-			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
-		}.get()
+		try await correlationMap.context!.eventLoop
+			.submit {
+				self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
+			}
+			.get()
 
 		// Create & store a promise so we know when the server responds
 		let promise = makePromise(context: correlationMap.context!, type: .id(requestID))
@@ -435,7 +443,9 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 				// Means server responded with “use the same connection”
 				return ("", redirectResponse.1)
 			} else {
-				throw PulsarClientError.internalError("This should never throw for the user of the library. If it does, please open an issue at https://github.com/flexlixrup/pulsar-client-swift/issues")
+				throw PulsarClientError.internalError(
+					"This should never throw for the user of the library. If it does, please open an issue at https://github.com/flexlixrup/pulsar-client-swift/issues"
+				)
 			}
 		} catch {
 			throw PulsarClientError.connectionError

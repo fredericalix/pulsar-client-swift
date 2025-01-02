@@ -78,7 +78,7 @@ extension PulsarClient {
 		oldProducers: [UInt64: ProducerCache],
 		host: String
 	) async throws {
-		guard let _ = await connectionPool[host] else {
+		guard await connectionPool[host] != nil else {
 			throw PulsarClientError.topicLookupFailed
 		}
 		logger.debug("Re-attaching \(oldProducers.count) producers...")
@@ -107,7 +107,7 @@ extension PulsarClient {
 		oldConsumers: [UInt64: ConsumerCache],
 		host: String
 	) async throws {
-		guard let _ = await connectionPool[host] else {
+		guard await connectionPool[host] != nil else {
 			throw PulsarClientError.topicLookupFailed
 		}
 		logger.debug("Re-attaching \(oldConsumers.count) consumers...")

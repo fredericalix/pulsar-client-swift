@@ -43,7 +43,13 @@ struct PulsarExample {
 
 			// throw error
 		}
-		let consumer = try await client.consumer(topic: "persistent://public/default/my-topic2", subscription: "test", subscriptionType: .shared, schema: .string) as PulsarConsumer<String>
+		let consumer =
+			try await client.consumer(
+				topic: "persistent://public/default/my-topic2",
+				subscription: "test",
+				subscriptionType: .shared,
+				schema: .string
+			) as PulsarConsumer<String>
 		Task {
 			do {
 				for try await message in consumer {
@@ -63,9 +69,10 @@ struct PulsarExample {
 			}
 		}
 
-		let producer = try await client.producer(topic: "persistent://public/default/my-topic1", accessMode: .shared, schema: .string) { _ in
-			print("Produer closed")
-		} as PulsarProducer<String>
+		let producer =
+			try await client.producer(topic: "persistent://public/default/my-topic1", accessMode: .shared, schema: .string) { _ in
+				print("Produer closed")
+			} as PulsarProducer<String>
 		Task {
 			while true {
 				do {

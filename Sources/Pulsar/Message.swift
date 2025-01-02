@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// A Pulsar Message.
 public struct Message<T: PulsarPayload>: Sendable {
+	/// The payload i.e. the actual message of a Pulsar Message.
 	public let payload: T
 
+	/// Create a new Pulsar Message.
+	/// - Parameter payload: The payload of the Pulsar Message.
 	public init(payload: T) {
 		self.payload = payload
 	}

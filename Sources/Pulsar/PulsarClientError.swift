@@ -57,22 +57,22 @@ public enum PulsarClientError: Error, Equatable {
 		if let error = error as? PulsarClientError {
 			switch error {
 				case .authenticationError,
-				     .authorizationError,
-				     .producerBlocked,
-				     .checksumError,
-				     .unsupportedVersion,
-				     .topicNotFound,
-				     .subscriptionNotFound,
-				     .consumerNotFound,
-				     .topicTerminated,
-				     .invalidTopicName,
-				     .incompatibleSchema,
-				     .transactionCoordinatorNotFound,
-				     .invalidTxnStatus,
-				     .notAllowed,
-				     .transactionConflict,
-				     .transactionNotFound,
-				     .producerFenced:
+					.authorizationError,
+					.producerBlocked,
+					.checksumError,
+					.unsupportedVersion,
+					.topicNotFound,
+					.subscriptionNotFound,
+					.consumerNotFound,
+					.topicTerminated,
+					.invalidTopicName,
+					.incompatibleSchema,
+					.transactionCoordinatorNotFound,
+					.invalidTxnStatus,
+					.notAllowed,
+					.transactionConflict,
+					.transactionNotFound,
+					.producerFenced:
 					true
 				default: false
 			}

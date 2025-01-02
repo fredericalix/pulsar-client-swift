@@ -32,14 +32,15 @@ public final class PulsarConsumer<T: PulsarPayload>: AsyncSequence, Sendable, An
 		stream.makeAsyncIterator()
 	}
 
-	init(autoAck: Bool = true,
-	     handler: PulsarClientHandler,
-	     consumerID: UInt64,
-	     topic: String,
-	     subscriptionName: String,
-	     subscriptionType: SubscriptionType,
-	     subscriptionMode: SubscriptionMode,
-	     schema: PulsarSchema
+	init(
+		autoAck: Bool = true,
+		handler: PulsarClientHandler,
+		consumerID: UInt64,
+		topic: String,
+		subscriptionName: String,
+		subscriptionType: SubscriptionType,
+		subscriptionMode: SubscriptionMode,
+		schema: PulsarSchema
 	) {
 		var cont: AsyncThrowingStream<Message<T>, Error>.Continuation!
 		stream = AsyncThrowingStream { c in
@@ -73,7 +74,13 @@ public final class PulsarConsumer<T: PulsarPayload>: AsyncSequence, Sendable, An
 
 	func handleClosing() async throws {
 		let handler = await stateManager.getHandler()
-		_ = try await handler.client.consumer(topic: topic, subscription: subscriptionName, subscriptionType: subscriptionType, consumerID: consumerID, existingConsumer: self)
+		_ = try await handler.client.consumer(
+			topic: topic,
+			subscription: subscriptionName,
+			subscriptionType: subscriptionType,
+			consumerID: consumerID,
+			existingConsumer: self
+		)
 	}
 
 	/// Close the consumer

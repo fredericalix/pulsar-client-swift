@@ -12,20 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-public extension PulsarClient {
+extension PulsarClient {
 	/// Creates a new Pulsar consumer.
 	/// - Parameters:
 	///   - topic: The topic to consume.
 	///   - subscription: The name of the subscription.
 	///   - subscriptionType: The type of the subscription.
+	///   - schema: The Pulsar Schema to use.
 	///   - subscriptionMode: Optional: The mode of the subscription.
 	///   - consumerID: Optional: If you want to define your own consumerID.
 	///   - connectionString: Not recommended:  Define another URL where the topic will be found. Can cause issues with connection.
 	///   - existingConsumer: Not recommended: Reuse an existing consumer.
 	/// - Returns: The newly created consumer.
+	/// - Throws: Throws an error when there is an issue that cannot be handled by internally.
 	///
 	/// - Warning: `connectionString` and `existingConsumer` are there for internal implementation and shouldn't be used by the library user.
-	func consumer<T: PulsarPayload>(
+	public func consumer<T: PulsarPayload>(
 		topic: String,
 		subscription: String,
 		subscriptionType: SubscriptionType,
@@ -33,7 +35,8 @@ public extension PulsarClient {
 		subscriptionMode: SubscriptionMode = .durable,
 		consumerID: UInt64? = nil,
 		connectionString: String? = nil,
-		existingConsumer: PulsarConsumer<T>? = nil) async throws -> PulsarConsumer<T> {
+		existingConsumer: PulsarConsumer<T>? = nil
+	) async throws -> PulsarConsumer<T> {
 		var connectionString = connectionString ?? initialURL
 		var topicFound = false
 		// Possibly do multiple lookups if the broker says "redirect"
@@ -62,26 +65,27 @@ public extension PulsarClient {
 		}
 		let handler = try await channel.pipeline.handler(type: PulsarClientHandler.self).get()
 
-		let consumer: PulsarConsumer = if let existingConsumer {
-			// We DO NOT want a new consumer. We reattach it by performing the consumer flow again.
-			try await handler.subscribe(
-				topic: topic,
-				subscription: subscription,
-				consumerID: consumerID!,
-				schema: schema,
-				existingConsumer: existingConsumer,
-				subscriptionType: subscriptionType,
-				subscriptionMode: subscriptionMode
-			)
-		} else {
-			try await handler.subscribe(
-				topic: topic,
-				subscription: subscription,
-				schema: schema,
-				subscriptionType: subscriptionType,
-				subscriptionMode: subscriptionMode
-			)
-		}
+		let consumer: PulsarConsumer =
+			if let existingConsumer {
+				// We DO NOT want a new consumer. We reattach it by performing the consumer flow again.
+				try await handler.subscribe(
+					topic: topic,
+					subscription: subscription,
+					consumerID: consumerID!,
+					schema: schema,
+					existingConsumer: existingConsumer,
+					subscriptionType: subscriptionType,
+					subscriptionMode: subscriptionMode
+				)
+			} else {
+				try await handler.subscribe(
+					topic: topic,
+					subscription: subscription,
+					schema: schema,
+					subscriptionType: subscriptionType,
+					subscriptionMode: subscriptionMode
+				)
+			}
 		return consumer
 	}
 }

@@ -21,13 +21,15 @@ public final class PulsarProducer<T: PulsarPayload>: Sendable, AnyProducer {
 	let schema: PulsarSchema
 	public let onClosed: (@Sendable (any Error) throws -> Void)?
 
-	init(handler: PulsarClientHandler,
-	     producerAccessMode: ProducerAccessMode,
-	     producerID: UInt64,
-	     schema: PulsarSchema,
-	     topic: String,
-	     producerName: String? = nil,
-	     onClosed: (@Sendable (any Error) throws -> Void)?) {
+	init(
+		handler: PulsarClientHandler,
+		producerAccessMode: ProducerAccessMode,
+		producerID: UInt64,
+		schema: PulsarSchema,
+		topic: String,
+		producerName: String? = nil,
+		onClosed: (@Sendable (any Error) throws -> Void)?
+	) {
 		self.producerID = producerID
 		self.topic = topic
 		self.schema = schema
@@ -46,11 +48,12 @@ public final class PulsarProducer<T: PulsarPayload>: Sendable, AnyProducer {
 	/// we wait for an answer of the broker before returning this method. To prevent blocking the thread and "only" suspend execution
 	/// till this answer is received, this method is asynchronous.
 	///
-	/// When we don't get an answer in the timeout, this method throws. For a version that does not care about timeouts, use ``PulsarProducer/asyncSend(message:)``.
+	/// - throws: When we don't get an answer in the timeout, this method throws. For a version that does not care about timeouts, use ``PulsarProducer/asyncSend(message:)``.
 	public func syncSend(message: Message<T>) async throws {
 		await stateManager.increaseSequenceID()
 		let producerName = await stateManager.getProducerName()!
-		try await stateManager.getHandler().send(message: message, producerID: producerID, producerName: producerName, isSyncSend: true)
+		try await stateManager.getHandler()
+			.send(message: message, producerID: producerID, producerName: producerName, isSyncSend: true)
 	}
 
 	/// Close the consumer
@@ -69,7 +72,8 @@ public final class PulsarProducer<T: PulsarPayload>: Sendable, AnyProducer {
 	public func asyncSend(message: Message<T>) async throws {
 		await stateManager.increaseSequenceID()
 		let producerName = await stateManager.getProducerName()!
-		try await stateManager.getHandler().send(message: message, producerID: producerID, producerName: producerName, isSyncSend: false)
+		try await stateManager.getHandler()
+			.send(message: message, producerID: producerID, producerName: producerName, isSyncSend: false)
 	}
 
 	func handleClosing() async throws {

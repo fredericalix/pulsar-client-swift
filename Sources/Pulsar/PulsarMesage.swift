@@ -20,7 +20,12 @@ struct PulsarMessage {
 	var messageMetadata: Pulsar_Proto_MessageMetadata?
 	let payload: ByteBuffer?
 
-	init(command: Pulsar_Proto_BaseCommand, brokerEntryMetadata: Pulsar_Proto_BrokerEntryMetadata? = nil, messageMetadata: Pulsar_Proto_MessageMetadata? = nil, payload: ByteBuffer? = nil) {
+	init(
+		command: Pulsar_Proto_BaseCommand,
+		brokerEntryMetadata: Pulsar_Proto_BrokerEntryMetadata? = nil,
+		messageMetadata: Pulsar_Proto_MessageMetadata? = nil,
+		payload: ByteBuffer? = nil
+	) {
 		self.command = command
 		self.brokerEntryMetadata = brokerEntryMetadata
 		self.messageMetadata = messageMetadata

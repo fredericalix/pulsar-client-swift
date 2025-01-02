@@ -14,8 +14,9 @@
 
 import NIOCore
 import NIOFoundationCompat
-@testable import Pulsar
 import Testing
+
+@testable import Pulsar
 
 @Suite("CRC32C Tests")
 struct CRC32CTests {
@@ -28,7 +29,11 @@ struct CRC32CTests {
 
 	@Test("Very long checksum")
 	func testEncodingLong() throws {
-		let data = ByteBuffer(data: "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et".data(using: .utf8)!)
+		let data = ByteBuffer(
+			data:
+				"Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et"
+				.data(using: .utf8)!
+		)
 		let checksum = CRC32C.checksum(data)
 		#expect(checksum == 0xA37A_B75F)
 	}

@@ -20,7 +20,7 @@ enum BackoffStrategy {
 
 	func delay(forAttempt attempt: Int) -> TimeAmount {
 		switch self {
-			case let .exponential(initial, factor, max):
+			case .exponential(let initial, let factor, let max):
 				let multiplier = pow(factor, Double(attempt))
 				let computed = TimeAmount.nanoseconds(Int64(Double(initial.nanoseconds) * multiplier))
 				return computed > max ? max : computed

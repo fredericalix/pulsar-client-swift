@@ -16,7 +16,7 @@ import Foundation
 import NIOCore
 import NIOFoundationCompat
 
-public protocol PulsarPayload: Codable, Sendable {
+public protocol PulsarPayload: Sendable {
 	func encode() -> ByteBuffer
 	static func decode(from buffer: ByteBuffer) throws -> Self
 }

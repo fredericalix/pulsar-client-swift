@@ -33,7 +33,7 @@ extension PulsarClientHandler {
 		}
 	}
 
-	public func closeProducer(producerID: UInt64) async throws {
+	func closeProducer(producerID: UInt64) async throws {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .closeProducer
 		var closeCmd = Pulsar_Proto_CommandCloseProducer()
@@ -47,9 +47,11 @@ extension PulsarClientHandler {
 		baseCommand.closeProducer = closeCmd
 		let pulsarMessage = PulsarMessage(command: baseCommand)
 
-		try await correlationMap.context!.eventLoop.submit {
-			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
-		}.get()
+		try await correlationMap.context!.eventLoop
+			.submit {
+				self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
+			}
+			.get()
 
 		try await promise.futureResult.get()
 	}
@@ -101,38 +103,47 @@ extension PulsarClientHandler {
 		msgMetadata.publishTime = UInt64(Date().timeIntervalSince1970 * 1000)
 		msgMetadata.properties = []
 		var promise: EventLoopPromise<Void>
-		promise = makePromise(context: correlationMap.context!, type: .send(producerID: producerID, sequenceID: UInt64(sequenceID)), forceClose: isSyncSend)
+		promise = makePromise(
+			context: correlationMap.context!,
+			type: .send(producerID: producerID, sequenceID: UInt64(sequenceID)),
+			forceClose: isSyncSend
+		)
 		// We just instantiated a promise, so it is there.
 		correlationMap.add(promise: .send(producerID: producerID, sequenceID: UInt64(sequenceID)), promiseValue: promise)
 		let message = PulsarMessage(command: baseCmd, messageMetadata: msgMetadata, payload: payload)
-		try await correlationMap.context!.eventLoop.submit {
-			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(message), promise: nil)
-		}.get()
+		try await correlationMap.context!.eventLoop
+			.submit {
+				self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(message), promise: nil)
+			}
+			.get()
 		if isSyncSend {
 			// We are sure the promise is not null because it got added in the i-block with the same condition before.
 			try await promise.futureResult.get()
 		}
 	}
 
-	func createProducer<T: PulsarPayload>(topic: String,
-	                                      accessMode: ProducerAccessMode,
-	                                      schema: PulsarSchema,
-	                                      producerName: String? = nil,
-	                                      producerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
-	                                      existingProducer: PulsarProducer<T>? = nil,
-	                                      onClosed: (@Sendable (any Error) throws -> Void)?) async throws -> PulsarProducer<T> {
+	func createProducer<T: PulsarPayload>(
+		topic: String,
+		accessMode: ProducerAccessMode,
+		schema: PulsarSchema,
+		producerName: String? = nil,
+		producerID: UInt64 = UInt64.random(in: 0 ..< UInt64.max),
+		existingProducer: PulsarProducer<T>? = nil,
+		onClosed: (@Sendable (any Error) throws -> Void)?
+	) async throws -> PulsarProducer<T> {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .producer
 		var producerCmd = Pulsar_Proto_CommandProducer()
 		producerCmd.topic = topic
 		let requestID = UInt64.random(in: 0 ..< UInt64.max)
 		producerCmd.requestID = requestID
-		producerCmd.producerAccessMode = switch accessMode {
-			case .shared: .shared
-			case .exclusive: .exclusive
-			case .exclusiveWithFencing: .exclusiveWithFencing
-			case .waitForExclusive: .waitForExclusive
-		}
+		producerCmd.producerAccessMode =
+			switch accessMode {
+				case .shared: .shared
+				case .exclusive: .exclusive
+				case .exclusiveWithFencing: .exclusiveWithFencing
+				case .waitForExclusive: .waitForExclusive
+			}
 		producerCmd.producerID = producerID
 		if let producerName {
 			producerCmd.producerName = producerName
@@ -166,9 +177,11 @@ extension PulsarClientHandler {
 		producers[producerID] = ProducerCache(producerID: producerID, producer: producer, createRequestID: requestID)
 
 		// Write/flush on the event loop, can be called externally, so we must put it on the eventLoop explicitly.
-		try await correlationMap.context!.eventLoop.submit {
-			self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
-		}.get()
+		try await correlationMap.context!.eventLoop
+			.submit {
+				self.correlationMap.context!.writeAndFlush(self.wrapOutboundOut(pulsarMessage), promise: nil)
+			}
+			.get()
 
 		// Wait for the broker to respond with success (or error)
 		try await promise.futureResult.get()
@@ -178,7 +191,9 @@ extension PulsarClientHandler {
 		#if DEBUG
 			Task {
 				let newProducerName = await producer.stateManager.getProducerName()
-				logger.trace("Producer got assigned name \(newProducerName ?? "none"), originally requested was \(producerName ?? "none.")")
+				logger.trace(
+					"Producer got assigned name \(newProducerName ?? "none"), originally requested was \(producerName ?? "none.")"
+				)
 			}
 		#endif
 		return producer

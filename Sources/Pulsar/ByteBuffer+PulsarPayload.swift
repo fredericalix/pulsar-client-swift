@@ -47,7 +47,10 @@ extension ByteBuffer {
 			case let value as Data:
 				byteBuffer.writeBytes(value)
 			default:
-				throw EncodingError.invalidValue(pulsarPayload, EncodingError.Context(codingPath: [], debugDescription: "Unsupported PulsarPayload type"))
+				throw EncodingError.invalidValue(
+					pulsarPayload,
+					EncodingError.Context(codingPath: [], debugDescription: "Unsupported PulsarPayload type")
+				)
 		}
 		self = byteBuffer
 	}
