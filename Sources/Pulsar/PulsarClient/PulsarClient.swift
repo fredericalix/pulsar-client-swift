@@ -27,6 +27,12 @@ public final actor PulsarClient {
 	// Callback function called whenever the client gets closed, forcefully or user intended.
 	public let onClosed: ((Error) throws -> Void)?
 
+	deinit {
+		Task { [weak self] in
+			try await self?.close()
+		}
+	}
+
 	/// Creates a new Pulsar Client and tries to connect it.
 	/// - Parameters:
 	///   - host: The host to connect to. Doesn't need the `pulsar://` prefix.

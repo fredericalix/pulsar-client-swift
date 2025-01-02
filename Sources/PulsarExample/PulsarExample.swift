@@ -33,9 +33,15 @@ struct PulsarExample {
 	func connect(eventLoopGroup: EventLoopGroup) async throws {
 		var msgCount = 0
 
-		let client = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 1) { error in
-			print("Client closed")
-			throw error
+		let client = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 2) { error in
+			do {
+				throw error
+			} catch {
+				print("Client closed")
+				exit(0)
+			}
+
+			// throw error
 		}
 		let consumer = try await client.consumer(topic: "persistent://public/default/my-topic2", subscription: "test", subscriptionType: .shared, schema: .string) as PulsarConsumer<String>
 		Task {
