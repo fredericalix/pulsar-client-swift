@@ -21,16 +21,18 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 	let logger = Logger(label: "PulsarClientHandler")
 	typealias InboundIn = PulsarMessage
 	typealias OutboundOut = PulsarMessage
+	var host: String
 
 	let eventLoop: EventLoop
 	let client: PulsarClient
 	let connectionEstablished: EventLoopPromise<Void>
 
-	init(eventLoop: EventLoop, client: PulsarClient) {
+	init(eventLoop: EventLoop, client: PulsarClient, host: String) {
 		let promise = eventLoop.makePromise(of: Void.self)
 		connectionEstablished = promise
 		self.eventLoop = eventLoop
 		self.client = client
+		self.host = host
 		connectionPromiseState = .inProgress(promise)
 	}
 

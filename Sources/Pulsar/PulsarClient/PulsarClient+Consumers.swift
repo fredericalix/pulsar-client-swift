@@ -52,6 +52,7 @@ extension PulsarClient {
 			if let redirectHost = lookup.0, !redirectHost.isEmpty {
 				// The broker told us to connect somewhere else
 				connectionString = getConnection(connectionString: redirectHost).0
+				handler.host = connectionString
 				try await connect(host: connectionString, port: port)
 			} else {
 				// Means topicFound or broker said "use the existing connection"

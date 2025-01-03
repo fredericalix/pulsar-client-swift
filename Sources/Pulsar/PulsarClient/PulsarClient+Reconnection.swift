@@ -14,18 +14,18 @@
 
 extension PulsarClient {
 	func handleChannelInactive(ipAddress: String, handler: PulsarClientHandler) async {
-		let remoteAddress = ipAddress
+		let remoteAddress = handler.host
 		connectionPool.removeValue(forKey: remoteAddress)
 
-		if isReconnecting.contains(ipAddress) {
-			logger.info("Already reconnecting to \(ipAddress). Skipping.")
+		if isReconnecting.contains(remoteAddress) {
+			logger.info("Already reconnecting to \(remoteAddress). Skipping.")
 			return
 		}
 
 		let oldConsumers = handler.consumers
 		let oldProducers = handler.producers
-		logger.warning("Channel inactive for \(ipAddress). Initiating reconnection...")
-		isReconnecting.insert(ipAddress)
+		logger.warning("Channel inactive for \(remoteAddress). Initiating reconnection...")
+		isReconnecting.insert(remoteAddress)
 
 		let backoff = BackoffStrategy.exponential(
 			initialDelay: .seconds(1),
@@ -44,7 +44,7 @@ extension PulsarClient {
 				// Reattach consumers after reconnecting
 				try await reattachConsumers(oldConsumers: oldConsumers, host: remoteAddress)
 				try await reattachProducers(oldProducers: oldProducers, host: remoteAddress)
-				isReconnecting.remove(ipAddress)
+				isReconnecting.remove(remoteAddress)
 				logger.info("Reconnected to \(remoteAddress) after \(attempt) attempt(s).")
 				break
 			} catch {

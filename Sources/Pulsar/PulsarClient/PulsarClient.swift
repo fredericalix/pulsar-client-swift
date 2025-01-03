@@ -95,7 +95,7 @@ public final actor PulsarClient {
 						sslHandler,
 						ByteToMessageHandler(PulsarFrameDecoder()),
 						MessageToByteHandler(PulsarFrameEncoder()),
-						PulsarClientHandler(eventLoop: self.group.next(), client: self)
+						PulsarClientHandler(eventLoop: self.group.next(), client: self, host: host)
 					])
 				}
 		} else {
@@ -104,7 +104,7 @@ public final actor PulsarClient {
 					channel.pipeline.addHandlers([
 						ByteToMessageHandler(PulsarFrameDecoder()),
 						MessageToByteHandler(PulsarFrameEncoder()),
-						PulsarClientHandler(eventLoop: self.group.next(), client: self)
+						PulsarClientHandler(eventLoop: self.group.next(), client: self, host: host)
 					])
 				}
 		}
@@ -125,7 +125,7 @@ public final actor PulsarClient {
 				isFirstConnect = false
 				await handleChannelInactive(
 					ipAddress: initialURL,
-					handler: PulsarClientHandler(eventLoop: group.next(), client: self)
+					handler: PulsarClientHandler(eventLoop: group.next(), client: self, host: host)
 				)
 			}
 		}
