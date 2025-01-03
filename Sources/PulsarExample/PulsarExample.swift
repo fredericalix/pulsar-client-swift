@@ -53,7 +53,7 @@ struct PulsarExample {
 		tlsConfig.privateKey = .privateKey(clientPrivateKey)
 		tlsConfig.certificateChain = [.certificate(clientCertificate)]
 		tlsConfig.certificateVerification = .fullVerification
-		let auth = TLSConnection(tlsConfiguration: tlsConfig, clientCA: clientCertificate, authenticationRequired: true)
+		let auth = TLSConnection(tlsConfiguration: tlsConfig, clientCA: clientCertificate, authenticationRequired: false)
 
 		let client = try await PulsarClient(
 			host: "pulsar-dev.internal.com",

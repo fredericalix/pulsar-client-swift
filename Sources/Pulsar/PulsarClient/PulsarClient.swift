@@ -121,6 +121,11 @@ public final actor PulsarClient {
 			try await handler.connectionEstablished.futureResult.get()
 			logger.info("Successfully connected to \(host):\(port)")
 		} catch {
+			if let error = error as? PulsarClientError {
+				if PulsarClientError.isUserHandledError(error) {
+					throw error
+				}
+			}
 			connectionPool[host] = nil
 			logger.error("Failed to connect to \(host):\(port) - \(error)")
 			if isFirstConnect {

@@ -19,6 +19,7 @@ public enum PulsarClientError: Error, Equatable {
 	case topicLookupFailed
 	case consumerClosed
 	case unsupportedMessageType
+	case promiseNotFound
 	case serverError(String)
 	case unknownError(String)
 	case invalidFrame

@@ -13,7 +13,7 @@ pulsar-client-swift provides a Swift native implementation of the [Apache Pulsar
 
 ## Requirements
 
-Swift 5.10+
+Swift 6.0+
 
 ## Installation
 

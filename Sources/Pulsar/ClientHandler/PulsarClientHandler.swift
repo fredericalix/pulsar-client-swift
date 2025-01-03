@@ -114,17 +114,36 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 				case .error:
 					// The server can return an Error command with a message inside
 					let errorCmd = message.command.error
-					try handleProtocolError(context: context, errorCmd)
+					guard let promise = correlationMap.remove(promise: .id(errorCmd.requestID)) else {
+						// If the error occurs during connection
+						if let promise = correlationMap.remove(promise: .generic("connect")) {
+							let error = handleServerError(context: context, message: errorCmd.error, promise: promise)
+							//only fail if we are still in progress
+							switch connectionPromiseState {
+								case .inProgress(let promise):
+									logger.error("Error while connecting to server.")
+									promise.fail(error)
+									connectionPromiseState = .completed
+								case .completed:
+									logger.trace("Connection promise was already completed.")
+							}
+							return
+						}
+						logger.error("Error response received for unknown request \(errorCmd.requestID)")
+						startRecovery(context: context, error: PulsarClientError.topicLookupFailed)
+						return
+					}
+					handleServerError(context: context, message: errorCmd.error, promise: promise)
 				default:
 					logger.debug("Unknown command \(message.command.type)")
 					throw PulsarClientError.unsupportedMessageType
 			}
 		} catch {
-			manageErrors(context: context, error: error)
+			startRecovery(context: context, error: error)
 		}
 	}
 
-	func manageErrors(context: ChannelHandlerContext, error: Error) {
+	func startRecovery(context: ChannelHandlerContext, error: Error) {
 		logger.error("Error during channelRead: \(error)")
 
 		// Fail any big pending promise (like the connectionEstablished) if it’s not done
@@ -177,22 +196,6 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 
 	// MARK: - Protocol Handlers
 
-	func handleProtocolError(context: ChannelHandlerContext, _ errorCommand: Pulsar_Proto_CommandError) throws {
-		let serverMsg = errorCommand.message
-		logger.error("Server responded with error: \(serverMsg)")
-		context.close(mode: .all, promise: nil)
-		guard let ipAddress = context.channel.remoteAddress?.ipAddress else {
-			context.fireChannelInactive()
-			return
-		}
-		Task {
-			await client.handleChannelInactive(ipAddress: ipAddress, handler: self)
-		}
-		// MANAGE errors seperately
-		// Continue normal pipeline behavior
-		context.fireErrorCaught(PulsarClientError.unknownError("Pulsar reported an error \(errorCommand.message)"))
-	}
-
 	func handlePing(context: ChannelHandlerContext, message _: Pulsar_Proto_CommandPing) {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .pong
@@ -227,119 +230,170 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		}
 	}
 
-	func topicLookupFailureType(
+	@discardableResult
+	func handleServerError(
 		context: ChannelHandlerContext,
-		message: Pulsar_Proto_CommandLookupTopicResponse,
+		message: Pulsar_Proto_ServerError,
 		promise: EventLoopPromise<Void>
-	) {
-		switch message.error {
+	) -> PulsarClientError {
+
+		switch message {
 			case .unknownError:
-				logger.error("Unknown error occurred during topic lookup: \(message.message)")
-				manageErrors(context: context, error: PulsarClientError.unknownError(message.message))
+				logger.error("Unknown error occurred")
+				let error = PulsarClientError.unknownError("unknown")
+				startRecovery(context: context, error: error)
+				return error
 
 			case .metadataError:
-				logger.warning("Metadata error occurred. Retrying lookup...")
-				manageErrors(context: context, error: PulsarClientError.metadataError)
+				logger.warning("Metadata error occurred. Retrying...")
+				let error = PulsarClientError.metadataError
+				startRecovery(context: context, error: error)
+				return error
 
 			case .persistenceError:
-				logger.warning("Persistence error occurred. Retrying lookup...")
-				manageErrors(context: context, error: PulsarClientError.persistenceError)
+				logger.warning("Persistence error occurred. Retrying...")
+				let error = PulsarClientError.persistenceError
+				startRecovery(context: context, error: error)
+				return error
 
 			case .authenticationError:
 				logger.error("Authentication error occurred. Escalating to client.")
-				promise.fail(PulsarClientError.authenticationError)
+				let error = PulsarClientError.authenticationError
+				promise.fail(error)
+				return error
 
 			case .authorizationError:
 				logger.error("Authorization error occurred. Escalating to client.")
-				promise.fail(PulsarClientError.authorizationError)
+				let error = PulsarClientError.authorizationError
+				promise.fail(error)
+				return error
 
 			case .consumerBusy:
 				logger.warning("Consumer is busy. Retrying...")
-				manageErrors(context: context, error: PulsarClientError.consumerBusy)
+				let error = PulsarClientError.consumerBusy
+				startRecovery(context: context, error: error)
+				return error
 
 			case .serviceNotReady:
 				logger.warning("Service not ready. Retrying...")
-				manageErrors(context: context, error: PulsarClientError.serviceNotReady)
+				let error = PulsarClientError.serviceNotReady
+				startRecovery(context: context, error: error)
+				return error
 
-			case .producerBlockedQuotaExceededError,
-				.producerBlockedQuotaExceededException:
+			case .producerBlockedQuotaExceededError, .producerBlockedQuotaExceededException:
 				logger.error("Producer blocked due to quota exceeded. Escalating to client.")
-				promise.fail(PulsarClientError.producerBlocked)
+				let error = PulsarClientError.producerBlocked
+				promise.fail(error)
+				return error
 
 			case .checksumError:
 				logger.error("Checksum error occurred. Escalating to client.")
-				promise.fail(PulsarClientError.checksumError)
+				let error = PulsarClientError.checksumError
+				promise.fail(error)
+				return error
 
 			case .unsupportedVersionError:
 				logger.error("Unsupported version error occurred. Escalating to client.")
-				promise.fail(PulsarClientError.unsupportedVersion)
+				let error = PulsarClientError.unsupportedVersion
+				promise.fail(error)
+				return error
 
 			case .topicNotFound:
 				logger.error("Topic not found. Escalating to client.")
-				promise.fail(PulsarClientError.topicNotFound)
+				let error = PulsarClientError.topicNotFound
+				promise.fail(error)
+				return error
 
 			case .subscriptionNotFound:
 				logger.error("Subscription not found. Escalating to client.")
-				promise.fail(PulsarClientError.subscriptionNotFound)
+				let error = PulsarClientError.subscriptionNotFound
+				promise.fail(error)
+				return error
 
 			case .consumerNotFound:
 				logger.error("Consumer not found. Escalating to client.")
-				promise.fail(PulsarClientError.consumerNotFound)
+				let error = PulsarClientError.consumerNotFound
+				promise.fail(error)
+				return error
 
 			case .tooManyRequests:
 				logger.warning("Too many requests. Retrying...")
-				manageErrors(context: context, error: PulsarClientError.tooManyRequests)
+				let error = PulsarClientError.tooManyRequests
+				startRecovery(context: context, error: error)
+				return error
 
 			case .topicTerminatedError:
 				logger.error("Topic has been terminated. Escalating to client.")
-				promise.fail(PulsarClientError.topicTerminated)
+				let error = PulsarClientError.topicTerminated
+				promise.fail(error)
+				return error
 
 			case .producerBusy:
 				logger.warning("Producer is busy. Retrying...")
-				manageErrors(context: context, error: PulsarClientError.producerBusy)
+				let error = PulsarClientError.producerBusy
+				startRecovery(context: context, error: error)
+				return error
 
 			case .invalidTopicName:
 				logger.error("Invalid topic name. Escalating to client.")
-				promise.fail(PulsarClientError.invalidTopicName)
+				let error = PulsarClientError.invalidTopicName
+				promise.fail(error)
+				return error
 
 			case .incompatibleSchema:
 				logger.error("Incompatible schema error. Escalating to client.")
-				promise.fail(PulsarClientError.incompatibleSchema)
+				let error = PulsarClientError.incompatibleSchema
+				promise.fail(error)
+				return error
 
 			case .consumerAssignError:
 				logger.warning("Consumer assignment error. Retrying...")
-				manageErrors(context: context, error: PulsarClientError.consumerAssignError)
+				let error = PulsarClientError.consumerAssignError
+				startRecovery(context: context, error: error)
+				return error
 
 			case .transactionCoordinatorNotFound:
 				logger.error("Transaction coordinator not found. Escalating to client.")
-				promise.fail(PulsarClientError.transactionCoordinatorNotFound)
+				let error = PulsarClientError.transactionCoordinatorNotFound
+				promise.fail(error)
+				return error
 
 			case .invalidTxnStatus:
 				logger.error("Invalid transaction status. Escalating to client.")
-				promise.fail(PulsarClientError.invalidTxnStatus)
+				let error = PulsarClientError.invalidTxnStatus
+				promise.fail(error)
+				return error
 
 			case .notAllowedError:
 				logger.error("Operation not allowed. Escalating to client.")
-				promise.fail(PulsarClientError.notAllowed)
+				let error = PulsarClientError.notAllowed
+				promise.fail(error)
+				return error
 
 			case .transactionConflict:
 				logger.error("Transaction conflict detected. Escalating to client.")
-				promise.fail(PulsarClientError.transactionConflict)
+				let error = PulsarClientError.transactionConflict
+				promise.fail(error)
+				return error
 
 			case .transactionNotFound:
 				logger.error("Transaction not found. Escalating to client.")
-				promise.fail(PulsarClientError.transactionNotFound)
+				let error = PulsarClientError.transactionNotFound
+				promise.fail(error)
+				return error
 
 			case .producerFenced:
 				logger.error("Producer has been fenced. Escalating to client.")
-				promise.fail(PulsarClientError.producerFenced)
+				let error = PulsarClientError.producerFenced
+				promise.fail(error)
+				return error
 		}
 	}
 
 	func handleLookupResponse(context: ChannelHandlerContext, message: Pulsar_Proto_CommandLookupTopicResponse) {
 		guard let promise = correlationMap.remove(promise: .id(message.requestID)) else {
 			logger.error("Lookup response received for unknown request ID \(message.requestID)")
-			manageErrors(context: context, error: PulsarClientError.topicLookupFailed)
+			startRecovery(context: context, error: PulsarClientError.topicLookupFailed)
 			return
 		}
 
@@ -350,7 +404,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 			// Means we must re-connect to the brokerServiceURL
 			correlationMap.addRedirectURL(message.brokerServiceURL, isAuthorative: message.authoritative)
 		} else if message.response == .failed {
-			topicLookupFailureType(context: context, message: message, promise: promise)
+			handleServerError(context: context, message: message.error, promise: promise)
 		}
 
 		promise.succeed()
