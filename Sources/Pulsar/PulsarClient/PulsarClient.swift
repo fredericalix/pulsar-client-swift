@@ -49,9 +49,11 @@ public final actor PulsarClient {
 	/// - Parameters:
 	///   - host: The host to connect to. Doesn't need the `pulsar://` prefix.
 	///   - port: The port to connect to. Normally `6650`.
+	///   - tlsConfiguration: If you connect to a `pulsar+ssl` URL, you need to provide a TLS configuration.
 	///   - group: If you want to pass your own EventLoopGroup, you can do it here. Otherwise the client will create it's own.
 	///   - reconnectLimit: How often the client should try reconnecting, if a connection is lost. The reconnection happens with an exponential backoff. The default limit is 10. Pass `nil` if the client should try reconnecting indefinitely.
 	///   - onClosed: If the client gets closed, this function gets called.
+	///- throws: Throws an error when the connection fails.
 	public init(
 		host: String,
 		port: Int,

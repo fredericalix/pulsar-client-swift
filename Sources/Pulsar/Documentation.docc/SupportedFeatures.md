@@ -8,10 +8,11 @@ The library is not (yet) complete. This section provides an overview of the supp
 |---------------------------------|-----------|-----------------------------------------------|
 | **Authentication**              |           |                                               |
 | - Token-based Authentication    | No    |                                               |
-| - TLS Authentication            | No    |                                               |
+| - TLS Authentication            | Yes    |                                               |
 | - OAuth2 Authentication         | No    |                                               |
 | **Encryption**                  |           |                                               |
 | - End-to-End Encryption         | No    |                                               |
+| - TLS Encryption        | Yes    |                                               |
 | **Connection Handling**         |           |                                               |
 | - Automatic Reconnection        | Yes   |                                               |
 | - Connection Timeout Config     | No    |                                               |

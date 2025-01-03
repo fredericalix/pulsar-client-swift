@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//
-//  PulsarSchema+Decode.swift
-//  pulsar-client-swift
-//
-//  Created by Felix Ruppert on 30.12.24.
-//
 import Foundation
 import NIOCore
 

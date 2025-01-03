@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//
-//  ServerController.swift
-//  pulsar-client-swift
-//
-//  Created by Felix Ruppert on 28.12.24.
-//
 import Foundation
 
 struct ServerController {
