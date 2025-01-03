@@ -121,6 +121,56 @@ struct PulsarExample {
 }
 ```
 
+## Secure connection
+
+The library supports mTLS encryption as well as mTLS authentication.
+
+```swift
+var clientCertPath: String? {
+			// Get all the nescessary certs
+			Bundle.module.path(forResource: "client-cert", ofType: "pem")
+		}
+
+		var clientKeyPath: String? {
+			Bundle.module.path(forResource: "client-key", ofType: "pem")
+		}
+
+		var caCertPath: String? {
+			Bundle.module.path(forResource: "ca-cert", ofType: "pem")
+		}
+
+		// Build the NIOSSLCertificates
+		let clientCertificate = try NIOSSLCertificate(file: clientCertPath!, format: .pem)
+		let clientPrivateKey = try NIOSSLPrivateKey(file: clientKeyPath!, format: .pem)
+		let caCertificate = try NIOSSLCertificate(file: caCertPath!, format: .pem)
+
+		// Make a NIO client TLS configuration.
+		var tlsConfig = TLSConfiguration.makeClientConfiguration()
+		tlsConfig.certificateVerification = .fullVerification
+		tlsConfig.trustRoots = .certificates([caCertificate])
+		tlsConfig.privateKey = .privateKey(clientPrivateKey)
+		tlsConfig.certificateChain = [.certificate(clientCertificate)]
+		tlsConfig.certificateVerification = .fullVerification
+
+		// Wrap it into TLSConnection and define if the cluster only uses TLS encryption or also authentication
+		let auth = TLSConnection(tlsConfiguration: tlsConfig, clientCA: clientCertificate, authenticationRequired: true)
+
+		let client = try await PulsarClient(
+			host: "localhost",
+			port: 6651,
+			tlsConfiguration: auth,
+			group: eventLoopGroup,
+			reconnectLimit: 10
+		) { error in
+			do {
+				throw error
+			} catch {
+				print("Client closed")
+				exit(0)
+			}
+		}
+```
+
 ## Additional Features
 - **Reconnection Handling**: Configure the reconnection limit with the `reconnectLimit` parameter when initializing the `PulsarClient`.
 - **Schema Support**: Specify schemas like `.string` for type-safe message handling.
