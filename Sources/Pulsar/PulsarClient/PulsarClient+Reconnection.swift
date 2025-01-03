@@ -34,13 +34,12 @@ extension PulsarClient {
 		)
 
 		var attempt = 0
-		let port = 6650
 		while true {
 			attempt += 1
 			do {
 				logger.info("Reconnection attempt #\(attempt) of \(reconnectLimit ?? Int.max) to \(remoteAddress):\(port)")
 
-				await connect(host: remoteAddress, port: port)
+				try await connect(host: remoteAddress, port: port)
 
 				// Reattach consumers after reconnecting
 				try await reattachConsumers(oldConsumers: oldConsumers, host: remoteAddress)

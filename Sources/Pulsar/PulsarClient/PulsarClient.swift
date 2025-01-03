@@ -14,6 +14,7 @@
 
 import Logging
 import NIO
+import NIOSSL
 @_exported import SchemaTypes
 
 /// The core Pulsar Client used to connect to the server.
@@ -29,9 +30,12 @@ public final actor PulsarClient {
 	let group: EventLoopGroup
 	var connectionPool: [String: Channel] = [:]
 	var initialURL: String
+	var port: Int
 	var isReconnecting: Set<String> = []
 	var isFirstConnect: Bool = true
 	var reconnectLimit: Int?
+	var isSecure: Bool
+	let tlsConfiguration: TLSConnection?
 	/// Callback function called whenever the client gets closed, forcefully or user intended.
 	public let onClosed: ((Error) throws -> Void)?
 
@@ -51,37 +55,59 @@ public final actor PulsarClient {
 	public init(
 		host: String,
 		port: Int,
+		tlsConfiguration: TLSConnection? = nil,
 		group: EventLoopGroup? = nil,
 		reconnectLimit: Int? = 10,
 		onClosed: ((Error) throws -> Void)?
-	) async {
+	) async throws {
 		#if DEBUG
 			self.group = group ?? MultiThreadedEventLoopGroup(numberOfThreads: 1)
 		#else
 			self.group = group ?? MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 		#endif
 		initialURL = host
+		self.port = port
 		self.reconnectLimit = reconnectLimit
 		self.onClosed = onClosed
-		await connect(host: host, port: port)
+		isSecure = port == 6651
+		self.tlsConfiguration = tlsConfiguration
+		try await connect(host: host, port: port)
 	}
 
 	// MARK: - General logic
 
-	func connect(host: String, port: Int) async {
+	func connect(host: String, port: Int) async throws {
 		// If already connected to this host, do nothing
 		if connectionPool[host] != nil {
 			return
 		}
-		let bootstrap = ClientBootstrap(group: group)
-			.channelInitializer { channel in
-				channel.pipeline.addHandlers([
-					ByteToMessageHandler(PulsarFrameDecoder()),
-					MessageToByteHandler(PulsarFrameEncoder()),
-					PulsarClientHandler(eventLoop: self.group.next(), client: self)
-				])
+		let bootstrap: ClientBootstrap
+		// check if the connection is secure
+		if isSecure {
+			guard let tlsConfiguration else {
+				throw PulsarClientError.noTLSProvided
 			}
-
+			let sslContext = try NIOSSLContext(configuration: tlsConfiguration.tlsConfiguration)
+			bootstrap = ClientBootstrap(group: group)
+				.channelInitializer { channel in
+					let sslHandler = try! NIOSSLClientHandler(context: sslContext, serverHostname: host)
+					return channel.pipeline.addHandlers([
+						sslHandler,
+						ByteToMessageHandler(PulsarFrameDecoder()),
+						MessageToByteHandler(PulsarFrameEncoder()),
+						PulsarClientHandler(eventLoop: self.group.next(), client: self)
+					])
+				}
+		} else {
+			bootstrap = ClientBootstrap(group: group)
+				.channelInitializer { channel in
+					channel.pipeline.addHandlers([
+						ByteToMessageHandler(PulsarFrameDecoder()),
+						MessageToByteHandler(PulsarFrameEncoder()),
+						PulsarClientHandler(eventLoop: self.group.next(), client: self)
+					])
+				}
+		}
 		do {
 			let channel = try await bootstrap.connect(host: host, port: port).get()
 			let handler = try await channel.pipeline.handler(type: PulsarClientHandler.self).get()
@@ -149,6 +175,6 @@ public final actor PulsarClient {
 		var str = connectionString
 		str = str.replacingOccurrences(of: "pulsar://", with: "")
 		let parts = str.split(separator: ":")
-		return (String(parts[0]), Int(parts[1]) ?? 6650)
+		return (String(parts[0]), Int(parts[1]) ?? port)
 	}
 }

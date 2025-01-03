@@ -29,6 +29,7 @@ final class PulsarFrameDecoder: ByteToMessageDecoder {
 		// Ensure at least 4 bytes are readable for totalSize
 		guard buffer.readableBytes >= 4 else {
 			buffer.moveReaderIndex(to: startIndex)
+			logger.trace("Need more data")
 			return .needMoreData
 		}
 

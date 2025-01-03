@@ -53,6 +53,7 @@ public enum PulsarClientError: Error, Equatable {
 	case transactionConflict
 	case transactionNotFound
 	case producerFenced
+	case noTLSProvided
 
 	static func isUserHandledError(_ error: any Error) -> Bool {
 		if let error = error as? PulsarClientError {

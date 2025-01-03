@@ -38,6 +38,9 @@ let package = Package(
 			name: "PulsarExample",
 			dependencies: [
 				"Pulsar"
+			],
+			resources: [
+				.process("Resources")
 			]
 		),
 		.testTarget(

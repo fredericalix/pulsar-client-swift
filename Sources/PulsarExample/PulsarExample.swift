@@ -15,6 +15,7 @@
 import Foundation
 import Logging
 import NIO
+import NIOSSL
 import Pulsar
 
 @main
@@ -32,8 +33,35 @@ struct PulsarExample {
 
 	func connect(eventLoopGroup: EventLoopGroup) async throws {
 		var msgCount = 0
+		var clientCertPath: String? {
+			Bundle.module.path(forResource: "client-cert", ofType: "pem")
+		}
 
-		let client = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 10) { error in
+		var clientKeyPath: String? {
+			Bundle.module.path(forResource: "client-key", ofType: "pem")
+		}
+
+		var caCertPath: String? {
+			Bundle.module.path(forResource: "ca-cert", ofType: "pem")
+		}
+		let clientCertificate = try NIOSSLCertificate(file: clientCertPath!, format: .pem)
+		let clientPrivateKey = try NIOSSLPrivateKey(file: clientKeyPath!, format: .pem)
+		let caCertificate = try NIOSSLCertificate(file: caCertPath!, format: .pem)
+		var tlsConfig = TLSConfiguration.makeClientConfiguration()
+		tlsConfig.certificateVerification = .fullVerification
+		tlsConfig.trustRoots = .certificates([caCertificate])
+		tlsConfig.privateKey = .privateKey(clientPrivateKey)
+		tlsConfig.certificateChain = [.certificate(clientCertificate)]
+		tlsConfig.certificateVerification = .fullVerification
+		let auth = TLSConnection(tlsConfiguration: tlsConfig, clientCA: clientCertificate, authenticationRequired: false)
+
+		let client = try await PulsarClient(
+			host: "pulsar-dev.internal.com",
+			port: 6651,
+			tlsConfiguration: auth,
+			group: eventLoopGroup,
+			reconnectLimit: 10
+		) { error in
 			do {
 				throw error
 			} catch {

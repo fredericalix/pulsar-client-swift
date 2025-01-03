@@ -360,8 +360,14 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		logger.debug("Connecting...")
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .connect
-
 		var connectCommand = Pulsar_Proto_CommandConnect()
+		if let auth = client.tlsConfiguration {
+			if auth.authenticationRequired {
+				connectCommand.authMethodName = "tls"
+				// Look at force unwrap
+				connectCommand.authData = try! Data(auth.clientCA.toDERBytes())
+			}
+		}
 		connectCommand.clientVersion = "Pulsar-Client-Swift-1.0.0"
 		connectCommand.protocolVersion = 21
 		baseCommand.connect = connectCommand
