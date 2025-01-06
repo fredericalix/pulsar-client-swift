@@ -55,21 +55,15 @@ struct PulsarExample {
 		tlsConfig.certificateVerification = .fullVerification
 		let auth = TLSConnection(tlsConfiguration: tlsConfig, clientCA: clientCertificate, authenticationRequired: false)
 
-		let client = try await PulsarClient(
+		let config = PulsarClientConfiguration(
 			host: "pulsar-dev.internal.com",
 			port: 6651,
 			tlsConfiguration: auth,
 			group: eventLoopGroup,
-			reconnectLimit: 10
-		) { error in
-			do {
-				throw error
-			} catch {
-				print("Client closed")
-				exit(0)
-			}
-
-			// throw error
+			reconnectionLimit: 10
+		)
+		let client = try await PulsarClient(configuration: config) { error in
+			print("Error: \(error)")
 		}
 		let consumer =
 			try await client.consumer(

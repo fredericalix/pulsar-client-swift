@@ -31,6 +31,7 @@ public final actor PulsarClient {
 	var connectionPool: [String: Channel] = [:]
 	var initialURL: String
 	var port: Int
+	let config: PulsarClientConfiguration
 	var isReconnecting: Set<String> = []
 	var isFirstConnect: Bool = true
 	var reconnectLimit: Int?
@@ -47,33 +48,26 @@ public final actor PulsarClient {
 
 	/// Creates a new Pulsar Client and tries to connect it.
 	/// - Parameters:
-	///   - host: The host to connect to. Doesn't need the `pulsar://` prefix.
-	///   - port: The port to connect to. Normally `6650`.
-	///   - tlsConfiguration: If you connect to a `pulsar+ssl` URL, you need to provide a TLS configuration.
-	///   - group: If you want to pass your own EventLoopGroup, you can do it here. Otherwise the client will create it's own.
-	///   - reconnectLimit: How often the client should try reconnecting, if a connection is lost. The reconnection happens with an exponential backoff. The default limit is 10. Pass `nil` if the client should try reconnecting indefinitely.
-	///   - onClosed: If the client gets closed, this function gets called.
+	///   - configuration: The ``PulsarClientConfiguration`` of the client.
+	///   - onClosed: The closure that gets executed when the client closes.
 	///- throws: Throws an error when the connection fails.
 	public init(
-		host: String,
-		port: Int,
-		tlsConfiguration: TLSConnection? = nil,
-		group: EventLoopGroup? = nil,
-		reconnectLimit: Int? = 10,
-		onClosed: ((Error) throws -> Void)?
+		configuration: PulsarClientConfiguration,
+		onClosed: (@Sendable (any Error) throws -> Void)?
 	) async throws {
+		self.config = configuration
 		#if DEBUG
-			self.group = group ?? MultiThreadedEventLoopGroup(numberOfThreads: 1)
+			self.group = configuration.group ?? MultiThreadedEventLoopGroup(numberOfThreads: 1)
 		#else
-			self.group = group ?? MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+			self.group = configuration.group ?? MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 		#endif
-		initialURL = host
-		self.port = port
-		self.reconnectLimit = reconnectLimit
-		self.onClosed = onClosed
+		initialURL = configuration.host
+		self.port = configuration.port
+		self.reconnectLimit = configuration.reconnectionLimit
 		isSecure = port == 6651
-		self.tlsConfiguration = tlsConfiguration
-		try await connect(host: host, port: port)
+		self.tlsConfiguration = configuration.tlsConfiguration
+		self.onClosed = onClosed
+		try await connect(host: initialURL, port: self.port)
 	}
 
 	// MARK: - General logic
