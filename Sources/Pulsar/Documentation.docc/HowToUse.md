@@ -28,15 +28,25 @@ struct PulsarExample {
 	func connect(eventLoopGroup: EventLoopGroup) async throws {
 		var msgCount = 0
 
-		// Create a Pulsar client
-		let client = await PulsarClient(host: "localhost", port: 6650)
-
-		// Set up a consumer
-		let consumer = try await client.consumer(
-			topic: "persistent://public/default/my-topic",
-			subscription: "test",
-			subscriptionType: .shared
+		// Configure the Pulsar client
+		let config = PulsarClientConfiguration(
+			host: "localhost",
+			port: 6650,
+			group: eventLoopGroup,
+			reconnectionLimit: 10
 		)
+
+		// Create a Pulsar client
+		let client = try await PulsarClient(configuration: config) { error in
+		   print("Error: \(error)")
+	   }
+
+	   // Set up a consumer
+	   let consumer = try await client.consumer(
+		   topic: "persistent://public/default/my-topic",
+		   subscription: "test",
+		   subscriptionType: .shared
+	   )
 
 		// Consume messages
 		Task {
@@ -86,9 +96,15 @@ struct PulsarExample {
 	}
 
 	func connect(eventLoopGroup: EventLoopGroup) async throws {
-		let client = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 10) { error in
-			print("Client closed due to error: \(error)")
-			exit(0)
+		// Configure the Pulsar client
+		let config = PulsarClientConfiguration(
+			host: "localhost",
+			port: 6650,
+			group: eventLoopGroup,
+			reconnectionLimit: 10
+		)
+		let client = try await PulsarClient(configuration: config) { error in
+			print("Error: \(error)")
 		}
 
 		// Set up a producer
@@ -126,49 +142,52 @@ struct PulsarExample {
 The library supports mTLS encryption as well as mTLS authentication.
 
 ```swift
-var clientCertPath: String? {
-			// Get all the nescessary certs
-			Bundle.module.path(forResource: "client-cert", ofType: "pem")
-		}
+import Foundation
+import NIO
+import NIOSSL
+import Pulsar
 
-		var clientKeyPath: String? {
-			Bundle.module.path(forResource: "client-key", ofType: "pem")
-		}
+func createSecureClient(eventLoopGroup: EventLoopGroup) async throws -> PulsarClient {
+	// Load certificates
+	guard
+		let clientCertPath = Bundle.module.path(forResource: "client-cert", ofType: "pem"),
+		let clientKeyPath = Bundle.module.path(forResource: "client-key", ofType: "pem"),
+		let caCertPath = Bundle.module.path(forResource: "ca-cert", ofType: "pem")
+	else {
+		fatalError("Certificates not found")
+	}
 
-		var caCertPath: String? {
-			Bundle.module.path(forResource: "ca-cert", ofType: "pem")
-		}
+	let clientCertificate = try NIOSSLCertificate(file: clientCertPath, format: .pem)
+	let clientPrivateKey = try NIOSSLPrivateKey(file: clientKeyPath, format: .pem)
+	let caCertificate = try NIOSSLCertificate(file: caCertPath, format: .pem)
 
-		// Build the NIOSSLCertificates
-		let clientCertificate = try NIOSSLCertificate(file: clientCertPath!, format: .pem)
-		let clientPrivateKey = try NIOSSLPrivateKey(file: clientKeyPath!, format: .pem)
-		let caCertificate = try NIOSSLCertificate(file: caCertPath!, format: .pem)
+	// Configure TLS
+	var tlsConfig = TLSConfiguration.makeClientConfiguration()
+	tlsConfig.certificateVerification = .fullVerification
+	tlsConfig.trustRoots = .certificates([caCertificate])
+	tlsConfig.privateKey = .privateKey(clientPrivateKey)
+	tlsConfig.certificateChain = [.certificate(clientCertificate)]
 
-		// Make a NIO client TLS configuration.
-		var tlsConfig = TLSConfiguration.makeClientConfiguration()
-		tlsConfig.certificateVerification = .fullVerification
-		tlsConfig.trustRoots = .certificates([caCertificate])
-		tlsConfig.privateKey = .privateKey(clientPrivateKey)
-		tlsConfig.certificateChain = [.certificate(clientCertificate)]
-		tlsConfig.certificateVerification = .fullVerification
+	// Create TLS connection configuration
+	let auth = TLSConnection(
+		tlsConfiguration: tlsConfig,
+		clientCA: clientCertificate,
+		authenticationRequired: true
+	)
 
-		// Wrap it into TLSConnection and define if the cluster only uses TLS encryption or also authentication
-		let auth = TLSConnection(tlsConfiguration: tlsConfig, clientCA: clientCertificate, authenticationRequired: true)
+	// Configure the Pulsar client with TLS
+	let config = PulsarClientConfiguration(
+		host: "localhost",
+		port: 6651,
+		tlsConfiguration: auth,
+		group: eventLoopGroup,
+		reconnectionLimit: 10
+	)
 
-		let client = try await PulsarClient(
-			host: "localhost",
-			port: 6651,
-			tlsConfiguration: auth,
-			group: eventLoopGroup,
-			reconnectLimit: 10
-		) { error in
-			do {
-				throw error
-			} catch {
-				print("Client closed")
-				exit(0)
-			}
-		}
+	return try await PulsarClient(configuration: config) { error in
+		print("Error: \(error)")
+	}
+}
 ```
 
 ## Additional Features
