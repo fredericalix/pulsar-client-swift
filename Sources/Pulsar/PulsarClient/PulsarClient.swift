@@ -87,21 +87,25 @@ public final actor PulsarClient {
 			bootstrap = ClientBootstrap(group: group)
 				.channelInitializer { channel in
 					let sslHandler = try! NIOSSLClientHandler(context: sslContext, serverHostname: host)
-					return channel.pipeline.addHandlers([
-						sslHandler,
-						ByteToMessageHandler(PulsarFrameDecoder()),
-						MessageToByteHandler(PulsarFrameEncoder()),
-						PulsarClientHandler(eventLoop: self.group.next(), client: self, host: host)
-					])
+					return channel.eventLoop.makeCompletedFuture {
+						try channel.pipeline.syncOperations.addHandlers([
+							sslHandler,
+							ByteToMessageHandler(PulsarFrameDecoder()),
+							MessageToByteHandler(PulsarFrameEncoder()),
+							PulsarClientHandler(eventLoop: self.group.next(), client: self, host: host)
+						])
+					}
 				}
 		} else {
 			bootstrap = ClientBootstrap(group: group)
 				.channelInitializer { channel in
-					channel.pipeline.addHandlers([
-						ByteToMessageHandler(PulsarFrameDecoder()),
-						MessageToByteHandler(PulsarFrameEncoder()),
-						PulsarClientHandler(eventLoop: self.group.next(), client: self, host: host)
-					])
+					channel.eventLoop.makeCompletedFuture {
+						try channel.pipeline.syncOperations.addHandlers([
+							ByteToMessageHandler(PulsarFrameDecoder()),
+							MessageToByteHandler(PulsarFrameEncoder()),
+							PulsarClientHandler(eventLoop: self.group.next(), client: self, host: host)
+						])
+					}
 				}
 		}
 		do {
