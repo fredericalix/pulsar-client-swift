@@ -1,0 +1,23 @@
+name: Lint & Test
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+jobs:
+  test:
+    name: Swift ${{ matrix.swift }} on ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        swift: ["5.10", "6.0"]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: docker/setup-docker-action@v4
+    - uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "6"
+    - uses: actions/checkout@v4
+    - name: Lint
+      run: swift format lint . -rs
+    - name: Run tests
+      run: swift test
