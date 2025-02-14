@@ -22,14 +22,28 @@ import Testing
 @Suite("Client Tests", .serialized)
 struct ClientTests {
 	let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+
+	@MainActor
 	@Test("Connect to a running client")
 	func connect() async throws {
+
 		try await ServerController.startServer()
 		try await Task.sleep(for: .seconds(10))
 		var error: PulsarClientError?
-		_ = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 1) { pulsarError in
+		let config = PulsarClientConfiguration(
+			host: "localhost",
+			port: 6650,
+			group: eventLoopGroup,
+			reconnectionLimit: 10
+		)
+		_ = try await PulsarClient(configuration: config) { pulsarError in
 			if let pError = pulsarError as? PulsarClientError {
-				error = pError
+				Task {
+					await MainActor.run {
+						error = pError
+
+					}
+				}
 			}
 		}
 		let keepAlivePromise = eventLoopGroup.next().makePromise(of: Void.self)
@@ -39,15 +53,28 @@ struct ClientTests {
 		}
 		try await keepAlivePromise.futureResult.get()
 		try await ServerController.stopServer()
+		try await Task.sleep(for: .seconds(10))
 		#expect(error == nil)
 	}
 
+	@MainActor
 	@Test("Connect to a non running client")
 	func connectNonRunning() async throws {
 		var error: PulsarClientError?
-		_ = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 1) { pulsarError in
+		let config = PulsarClientConfiguration(
+			host: "localhost",
+			port: 6650,
+			group: eventLoopGroup,
+			reconnectionLimit: 1
+		)
+		_ = try await PulsarClient(configuration: config) { pulsarError in
 			if let pError = pulsarError as? PulsarClientError {
-				error = pError
+				Task {
+					await MainActor.run {
+						error = pError
+
+					}
+				}
 			}
 		}
 		let keepAlivePromise = eventLoopGroup.next().makePromise(of: Void.self)
@@ -59,14 +86,26 @@ struct ClientTests {
 		#expect(error == .clientClosed)
 	}
 
+	@MainActor
 	@Test("Client reconnection")
 	func reconnection() async throws {
 		try await ServerController.startServer()
 		try await Task.sleep(for: .seconds(10))
 		var error: PulsarClientError?
-		_ = await PulsarClient(host: "localhost", port: 6650, reconnectLimit: 10) { pulsarError in
+		let config = PulsarClientConfiguration(
+			host: "localhost",
+			port: 6650,
+			group: eventLoopGroup,
+			reconnectionLimit: 10
+		)
+		_ = try await PulsarClient(configuration: config) { pulsarError in
 			if let pError = pulsarError as? PulsarClientError {
-				error = pError
+				Task {
+					await MainActor.run {
+						error = pError
+
+					}
+				}
 			}
 		}
 		let keepAlivePromise = eventLoopGroup.next().makePromise(of: Void.self)
