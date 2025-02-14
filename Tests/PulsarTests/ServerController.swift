@@ -73,7 +73,7 @@ struct ServerController {
 		#if canImport(Darwin)
 			dockerPath = "/usr/local/bin/docker"
 		#else
-			dockerPath = "/snap/bin/docker"
+			dockerPath = "docker"
 		#endif
 		// Stop the Pulsar container
 		try await runCommand("\(dockerPath) stop pulsar")
