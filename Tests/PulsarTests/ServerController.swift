@@ -49,8 +49,16 @@ struct ServerController {
 	}
 
 	static func startServer() async throws {
+		var dockerPath: String
+		#if canImport(Darwin)
+			dockerPath = "/usr/local/bin/docker"
+
+		#else
+			dockerPath = "/snap/bin/docker"
+		#endif
+
 		let dockerCommand = """
-			/usr/local/bin/docker run -d --name pulsar -it \\
+			\(dockerPath) -d --name pulsar -it \\
 			-p 6650:6650 \\
 			-p 8080:8080 \\
 			--mount source=pulsardata,target=/pulsar/data \\
@@ -62,10 +70,16 @@ struct ServerController {
 	}
 
 	static func stopServer() async throws {
+		var dockerPath: String
+		#if canImport(Darwin)
+			dockerPath = "/usr/local/bin/docker"
+		#else
+			dockerPath = "/snap/bin/docker"
+		#endif
 		// Stop the Pulsar container
-		try await runCommand("/usr/local/bin/docker stop pulsar")
+		try await runCommand("\(dockerPath) stop pulsar")
 
 		// Remove the Pulsar container
-		try await runCommand("/usr/local/bin/docker rm pulsar")
+		try await runCommand("\(dockerPath) rm pulsar")
 	}
 }
