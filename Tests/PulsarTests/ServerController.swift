@@ -54,7 +54,7 @@ struct ServerController {
 			dockerPath = "/usr/local/bin/docker"
 
 		#else
-			dockerPath = "/snap/bin/docker"
+			dockerPath = "docker"
 		#endif
 
 		let dockerCommand = """
