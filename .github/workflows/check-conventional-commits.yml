@@ -1,0 +1,30 @@
+name: Conventional Commits Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-commit-messages:
+    name: Validate Commit Messages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensure full commit history is fetched
+
+      - name: Install Commitlint
+        run: |
+          npm install -g @commitlint/cli @commitlint/config-conventional
+
+      - name: Retrieve commits
+        id: commits
+        run: |
+          commits=$(git log origin/${{ github.event.pull_request.base.ref }}..HEAD --pretty=format:"%s" | jq -R -s -c 'split("\n")[:-1]')
+          echo "commit_messages=$commits" >> $GITHUB_ENV
+
+      - name: Validate commits
+        run: |
+          echo "$commit_messages" | jq -r '.[]' | npx commitlint
