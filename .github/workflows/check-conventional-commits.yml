@@ -13,8 +13,9 @@ jobs:
           fetch-depth: 0
       - name: Install commitlint
         run: |
-          npm install -g conventional-changelog-conventionalcommits
-          npm install -g commitlint@latest
+          npm install -g commitlint@latest @commitlint/config-conventional
+        
+
 
       - name: Validate PR commits with commitlint
         if: github.event_name == 'pull_request'
