@@ -51,7 +51,11 @@ struct ServerController {
 	static func startServer() async throws {
 		var dockerPath: String
 		#if canImport(Darwin)
-			dockerPath = "/usr/local/bin/docker"
+			if ProcessInfo.processInfo.environment["CI"] != nil {
+				dockerPath = "docker"
+			} else {
+				dockerPath = "/usr/local/bin/docker"
+			}
 
 		#else
 			dockerPath = "docker"
@@ -71,7 +75,11 @@ struct ServerController {
 	static func stopServer() async throws {
 		var dockerPath: String
 		#if canImport(Darwin)
-			dockerPath = "/usr/local/bin/docker"
+			if ProcessInfo.processInfo.environment["CI"] != nil {
+				dockerPath = "docker"
+			} else {
+				dockerPath = "/usr/local/bin/docker"
+			}
 		#else
 			dockerPath = "docker"
 		#endif
