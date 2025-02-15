@@ -12,6 +12,7 @@ jobs:
         swift: ["5.10", "6.0"]
     runs-on: ${{ matrix.os }}
     steps:
+    - uses: docker/actions-toolkit/.github/actions/macos-setup-qemu@19ca9ade20f5da695f76a10988d6532058575f82
     - uses: docker/setup-docker-action@v4
     - uses: swift-actions/setup-swift@v2
       with:
