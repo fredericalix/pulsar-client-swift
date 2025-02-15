@@ -14,9 +14,51 @@
 
 /// A Pulsar producer used to publish messages to a specific topic.
 ///
-/// This component enables sending messages to a Pulsar topic. It supports configuration
-/// for schema, and other publishing parameters to ensure efficient and reliable
-/// message delivery.
+/// This class provides a mechanism for sending messages to an Apache Pulsar topic.
+/// It supports both synchronous and asynchronous message publishing, allowing
+/// developers to choose between guaranteed delivery with broker acknowledgment
+/// (`syncSend`) and a fire-and-forget approach (`asyncSend`). The producer
+/// is designed to handle different schema types and manage its lifecycle efficiently.
+///
+/// ## Features:
+/// - Publishes messages to a specified Pulsar topic.
+/// - Supports synchronous (`syncSend`) and asynchronous (`asyncSend`) message delivery.
+/// - Manages producer state via `ProducerStateManager`.
+/// - Configurable access mode and schema.
+/// - Provides a closure (`onClosed`) to handle producer shutdown events.
+///
+/// ## Usage Example:
+/// ```swift
+/// let producer = PulsarProducer<MyPayload>(
+///     handler: myHandler,
+///     producerAccessMode: .exclusive,
+///     producerID: 12345,
+///     schema: mySchema,
+///     topic: "persistent://public/default/my-topic"
+/// )
+///
+/// try await producer.syncSend(message: myMessage) // Waits for broker response
+/// try await producer.asyncSend(message: myMessage) // Fire-and-forget
+/// try await producer.close() // Closes the producer
+/// ```
+///
+/// ## Lifecycle:
+/// - The producer is initialized with a handler, schema, topic, and other configurations.
+/// - Messages can be sent using `syncSend` (awaits broker acknowledgment) or `asyncSend` (does not wait).
+/// - The producer can be explicitly closed using `close()`, triggering the `onClosed` handler if provided.
+///
+/// ## Error Handling:
+/// - `syncSend` throws an error if a broker acknowledgment is not received within a timeout.
+/// - `asyncSend` does not throw errors for timeout issues but will throw for major failures.
+/// - `close()` ensures a graceful shutdown of the producer.
+///
+/// - Note: This class is designed to be `Sendable`, meaning it can be used safely in concurrent contexts.
+///
+/// - Parameters:
+///   - T: A type conforming to ``PulsarPayload``, representing the payload schema.
+///
+/// - SeeAlso: ``PulsarConsumer`` for message consumtion.
+///
 public final class PulsarProducer<T: PulsarPayload>: Sendable, AnyProducer {
 	public let producerID: UInt64
 	let topic: String

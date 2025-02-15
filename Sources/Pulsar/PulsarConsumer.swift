@@ -14,9 +14,54 @@
 
 /// A Pulsar consumer used to asynchronously consume messages from a specific topic.
 ///
-/// This class provides support for consuming messages from a Pulsar topic using various subscription types.
-/// It conforms to `AsyncSequence`, enabling iteration over received messages in an asynchronous context.
-/// Generic `T` represents the type of payload for the messages, conforming to `PulsarPayload`.
+/// This class provides functionality for consuming messages from an Apache Pulsar topic.
+/// It supports different subscription types and conforms to `AsyncSequence`, allowing
+/// messages to be iterated over in an asynchronous context using Swift's `for await` syntax.
+///
+/// ## Features:
+/// - Conforms to `AsyncSequence`, enabling structured and idiomatic message consumption.
+/// - Handles message acknowledgment automatically (if `autoAcknowledge` is enabled).
+/// - Supports schema-based payload deserialization.
+/// - Provides explicit error handling mechanisms.
+///
+/// ## Usage Example:
+/// ```swift
+/// let consumer = PulsarConsumer<MyPayload>(
+///     autoAck: true,
+///     handler: myHandler,
+///     consumerID: 67890,
+///     topic: "persistent://public/default/my-topic",
+///     subscriptionName: "my-subscription",
+///     subscriptionType: .shared,
+///     subscriptionMode: .durable,
+///     schema: mySchema
+/// )
+///
+/// for await message in consumer {
+///     print("Received message: \(message.payload)")
+/// }
+///
+/// try await consumer.close() // Close the consumer when done
+/// ```
+///
+/// ## Lifecycle:
+/// - The consumer is initialized with a handler, topic, subscription details, and schema.
+/// - Messages are received and decoded using the specified schema.
+/// - The consumer continuously yields messages via `AsyncThrowingStream<Message<T>, Error>`.
+/// - The consumer can be explicitly closed using `close()`, ensuring proper resource cleanup.
+///
+/// ## Error Handling:
+/// - If message deserialization fails, the consumer will call `fail(error:)`, terminating the stream.
+/// - If an error occurs while handling messages, the stream finishes with the provided error.
+/// - Closing the consumer ensures proper detachment from the Pulsar client.
+///
+/// - Note: This class is designed to be `Sendable`, meaning it can be safely used in concurrent contexts.
+///
+/// - Parameters:
+///   - T: A type conforming to ``PulsarPayload``, representing the message payload.
+///
+/// - SeeAlso: ``PulsarProducer`` for message publishing.
+///
 public final class PulsarConsumer<T: PulsarPayload>: AsyncSequence, Sendable, AnyConsumer {
 	public let consumerID: UInt64
 	let autoAcknowledge: Bool
