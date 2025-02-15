@@ -17,14 +17,42 @@ import NIO
 import NIOSSL
 @_exported import SchemaTypes
 
-/// The core Pulsar Client used to connect to the server.
+/// The core Pulsar Client used to establish and manage connections to an Apache Pulsar server.
 ///
-/// This actor manages the connection to a Pulsar server and provides functionality
-/// for creating and managing producers and consumers. It also handles configuration
-/// of connection parameters and retry mechanisms.
+/// This actor is responsible for handling communication with the Pulsar server, including
+/// establishing and managing connections, handling authentication, and providing an interface
+/// for creating producers and consumers. It also implements reconnection logic, secure TLS handling,
+/// and resource management for active connections.
 ///
-/// All interactions with the Pulsar messaging system, such as sending or receiving messages,
-/// are controlled through this client.
+/// ## Features
+/// - Supports secure (TLS) and non-secure connections.
+/// - Manages a pool of active connections.
+/// - Handles automatic reconnections in case of network failures.
+/// - Supports configuration of connection parameters including hostname, port, and reconnection limits.
+/// - Provides an event-driven interface for message producers and consumers.
+/// - Closes all active channels gracefully when the client shuts down.
+///
+/// ## Usage
+/// ```swift
+/// let config = PulsarClientConfiguration(host: "pulsar.example.com", port: 6650)
+/// let client = try await PulsarClient(configuration: config) { error in
+///     print("Client closed: \(error)")
+/// }
+/// ```
+///
+/// Once initialized, the `PulsarClient` can be used to create producers and consumers to send and receive messages.
+///
+/// ## Connection Management
+/// - The client maintains a `connectionPool` to track open connections.
+/// - If the connection is lost, it attempts to reconnect based on the `reconnectLimit` configuration.
+/// - TLS settings can be specified through `PulsarClientConfiguration` to establish a secure connection.
+///
+/// ## Closing the Client
+/// When the client is no longer needed, it should be closed using:
+/// ```swift
+/// try await client.close()
+/// ```
+/// This ensures that all resources are released and all connections are closed cleanly.
 public final actor PulsarClient {
 	let logger = Logger(label: "PulsarClient")
 	let group: EventLoopGroup

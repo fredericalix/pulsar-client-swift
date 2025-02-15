@@ -42,7 +42,7 @@ struct PulsarExample {
 	   }
 
 	   // Set up a consumer
-	   let consumer = try await client.consumer(
+	   let consumer: PulsarProducer<String> = try await client.consumer(
 		   topic: "persistent://public/default/my-topic",
 		   subscription: "test",
 		   subscriptionType: .shared
@@ -108,13 +108,13 @@ struct PulsarExample {
 		}
 
 		// Set up a producer
-		let producer = try await client.producer(
+		let producer: PulsarProducer<String> = try await client.producer(
 			topic: "persistent://public/default/my-topic1",
 			accessMode: .shared,
 			schema: .string
 		) { _ in
 			print("Producer closed")
-		} as PulsarProducer<String>
+		}
 
 		// Send messages in a loop
 		Task {
