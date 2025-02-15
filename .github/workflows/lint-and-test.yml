@@ -3,21 +3,34 @@ on:
   pull_request:
     branches: ["main"]
   workflow_dispatch:
+
 jobs:
   test:
     name: Swift ${{ matrix.swift }} on ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-13]
-        swift: ["5.10", "6.0"]
+        os: [ubuntu-latest]
+        swift: ["6.0"]
     runs-on: ${{ matrix.os }}
+
     steps:
-    - uses: docker/setup-docker-action@v4
-    - uses: swift-actions/setup-swift@v2
-      with:
-        swift-version: "6"
-    - uses: actions/checkout@v4
-    - name: Lint
-      run: swift format lint . -rs
-    - name: Run tests
-      run: swift test
+      - name: Setup QEMU (macOS only)
+        if: runner.os == 'macOS'
+        uses: docker/actions-toolkit/.github/actions/macos-setup-qemu@19ca9ade20f5da695f76a10988d6532058575f82
+
+      - name: Setup Docker
+        uses: docker/setup-docker-action@v4
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "${{ matrix.swift }}"
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Lint
+        run: swift format lint . -rs
+
+      - name: Run tests
+        run: swift test
