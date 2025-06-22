@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import Foundation
+
 /// A Pulsar consumer used to asynchronously consume messages from a specific topic.
 ///
 /// This class provides functionality for consuming messages from an Apache Pulsar topic.

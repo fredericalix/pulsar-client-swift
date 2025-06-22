@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import Foundation
+
 actor ProducerStateManager {
 	var producerName: String?
 	var sequenceID: Int64 = -1

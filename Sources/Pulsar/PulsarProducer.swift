@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import Foundation
+
 /// A Pulsar producer used to publish messages to a specific topic.
 ///
 /// This class provides a mechanism for sending messages to an Apache Pulsar topic.
