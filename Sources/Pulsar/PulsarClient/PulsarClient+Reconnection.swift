@@ -1,3 +1,10 @@
+//
+//  PulsarClient+Reconnection.swift
+//  pulsar-client-swift
+//
+//  Created by Andrea Bonini on 03/28/24.
+//
+
 // Copyright 2025 Felix Ruppert
 //
 // Licensed under the Apache License, Version 2.0 (the License );
