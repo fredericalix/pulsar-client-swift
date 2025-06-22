@@ -15,6 +15,7 @@
 import Foundation
 import NIOCore
 import NIOFoundationCompat
+import Logging
 
 extension PulsarClientHandler {
 	func handleProducerSuccess(context _: ChannelHandlerContext, message: Pulsar_Proto_CommandProducerSuccess) {

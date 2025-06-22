@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import NIOCore
+import Logging
 
 extension PulsarClientHandler {
 	func acknowledge(context: ChannelHandlerContext, message: PulsarMessage) {
