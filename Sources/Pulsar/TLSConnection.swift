@@ -17,10 +17,10 @@ import NIOSSL
 /// A TLS connection to configure the client connection.
 public struct TLSConnection: Sendable {
 	let tlsConfiguration: TLSConfiguration
-	let clientCA: NIOSSLCertificate
+	let clientCA: NIOSSLCertificate?
 	let authenticationRequired: Bool
 
-	public init(tlsConfiguration: TLSConfiguration, clientCA: NIOSSLCertificate, authenticationRequired: Bool) {
+	public init(tlsConfiguration: TLSConfiguration, clientCA: NIOSSLCertificate? = nil, authenticationRequired: Bool = false) {
 		self.tlsConfiguration = tlsConfiguration
 		self.clientCA = clientCA
 		self.authenticationRequired = authenticationRequired

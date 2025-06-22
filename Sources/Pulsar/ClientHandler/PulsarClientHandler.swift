@@ -422,10 +422,10 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		
 		// Check for TLS authentication first
 		if let auth = client.tlsConfiguration {
-			if auth.authenticationRequired {
+			if auth.authenticationRequired, let clientCA = auth.clientCA {
 				connectCommand.authMethodName = "tls"
 				// Look at force unwrap
-				connectCommand.authData = try! Data(auth.clientCA.toDERBytes())
+				connectCommand.authData = try! Data(clientCA.toDERBytes())
 			}
 		}
 		
