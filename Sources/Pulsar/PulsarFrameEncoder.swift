@@ -15,6 +15,7 @@
 import Foundation
 import Logging
 import NIOCore
+import SwiftProtobuf
 
 final class PulsarFrameEncoder: MessageToByteEncoder {
 	typealias OutboundIn = PulsarMessage

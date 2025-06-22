@@ -15,6 +15,7 @@
 import Foundation
 import Logging
 import NIOCore
+import SwiftProtobuf
 import NIOFoundationCompat
 
 final class PulsarFrameDecoder: ByteToMessageDecoder {
