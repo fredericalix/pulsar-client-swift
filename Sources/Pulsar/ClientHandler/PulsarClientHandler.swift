@@ -15,6 +15,7 @@
 import Foundation
 import Logging
 import NIO
+import NIOCore
 import NIOFoundationCompat
 
 final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {

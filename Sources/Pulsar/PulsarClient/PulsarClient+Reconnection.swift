@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import NIOCore
+import Logging
+
 extension PulsarClient {
 	func handleChannelInactive(ipAddress: String, handler: PulsarClientHandler) async {
 		let remoteAddress = handler.host

@@ -15,6 +15,7 @@
 import Foundation
 import Logging
 import NIO
+import NIOCore
 import NIOSSL
 @_exported import SchemaTypes
 

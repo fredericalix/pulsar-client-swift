@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import Foundation
+
 protocol AnyConsumer: AsyncSequence, AnyObject {
 	var consumerID: UInt64 { get }
 	var autoAcknowledge: Bool { get }

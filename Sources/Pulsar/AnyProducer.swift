@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import Foundation
+
 protocol AnyProducer: AnyObject {
 	var producerID: UInt64 { get }
 	var topic: String { get }
