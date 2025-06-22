@@ -20,6 +20,7 @@ public struct PulsarClientConfiguration: Sendable {
 	let host: String
 	let port: Int
 	let tlsConfiguration: TLSConnection?
+	let authenticationToken: String?
 	let group: EventLoopGroup?
 	let reconnectionLimit: Int?
 
@@ -28,18 +29,21 @@ public struct PulsarClientConfiguration: Sendable {
 	///   - host: The host to connect to. Doesn't need the `pulsar://` prefix.
 	///   - port: The port to connect to. Normally `6650`.
 	///   - tlsConfiguration: If you connect to a `pulsar+ssl` URL, you need to provide a TLS configuration.
+	///   - authenticationToken: Optional authentication token for OAuth/token authentication.
 	///   - group: If you want to pass your own EventLoopGroup, you can do it here. Otherwise the client will create it's own.
 	///   - reconnectionLimit: How often the client should try reconnecting, if a connection is lost. The reconnection happens with an exponential backoff. The default limit is 10. Pass `nil` if the client should try reconnecting indefinitely.
 	public init(
 		host: String,
 		port: Int,
 		tlsConfiguration: TLSConnection? = nil,
+		authenticationToken: String? = nil,
 		group: EventLoopGroup? = nil,
 		reconnectionLimit: Int? = 10
 	) {
 		self.host = host
 		self.port = port
 		self.tlsConfiguration = tlsConfiguration
+		self.authenticationToken = authenticationToken
 		self.group = group
 		self.reconnectionLimit = reconnectionLimit
 	}

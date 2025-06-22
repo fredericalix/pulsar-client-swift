@@ -148,7 +148,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 	func startRecovery(context: ChannelHandlerContext, error: Error) {
 		logger.error("Error during channelRead: \(error)")
 
-		// Fail any big pending promise (like the connectionEstablished) if it’s not done
+		// Fail any big pending promise (like the connectionEstablished) if it's not done
 		switch connectionPromiseState {
 			case .inProgress(let promise):
 				promise.fail(error)
@@ -209,7 +209,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 	}
 
 	func handleConnected(context _: ChannelHandlerContext, message _: Pulsar_Proto_CommandConnected) {
-		// Only succeed if we’re still in progress
+		// Only succeed if we're still in progress
 		switch connectionPromiseState {
 			case .inProgress(let promise):
 				logger.info("Connected channel.")
@@ -419,6 +419,8 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		var baseCommand = Pulsar_Proto_BaseCommand()
 		baseCommand.type = .connect
 		var connectCommand = Pulsar_Proto_CommandConnect()
+		
+		// Check for TLS authentication first
 		if let auth = client.tlsConfiguration {
 			if auth.authenticationRequired {
 				connectCommand.authMethodName = "tls"
@@ -426,6 +428,13 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 				connectCommand.authData = try! Data(auth.clientCA.toDERBytes())
 			}
 		}
+		
+		// Check for OAuth token authentication
+		if let authToken = client.authenticationToken {
+			connectCommand.authMethodName = "token"
+			connectCommand.authData = authToken.data(using: .utf8) ?? Data()
+		}
+		
 		connectCommand.clientVersion = "Pulsar-Client-Swift-1.0.0"
 		connectCommand.protocolVersion = 21
 		baseCommand.connect = connectCommand
@@ -473,7 +482,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 
 	// MARK: - Topic Lookup
 
-	/// Looks up the topic. If the broker says “redirect,” we store that in `correlationMap` and succeed the promise.
+	/// Looks up the topic. If the broker says "redirect," we store that in `correlationMap` and succeed the promise.
 	/// The caller (PulsarClient) will check `removeRedirectURL()` to see if we need to connect elsewhere.
 	func topicLookup(topic: String, authorative: Bool) async throws -> (String?, Bool) {
 		var baseCommand = Pulsar_Proto_BaseCommand()
@@ -496,7 +505,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 		let promise = makePromise(context: correlationMap.context!, type: .id(requestID))
 		correlationMap.add(promise: .id(requestID), promiseValue: promise)
 		do {
-			// Wait for the server’s response or error
+			// Wait for the server's response or error
 			try await promise.futureResult.get()
 
 			// Did the server instruct us to redirect?
@@ -504,7 +513,7 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 			if let redirectResponse = optionalRedirectResponse, let redirectURL = redirectResponse.0 {
 				return (redirectURL, redirectResponse.1)
 			} else if let redirectResponse = optionalRedirectResponse {
-				// Means server responded with “use the same connection”
+				// Means server responded with "use the same connection"
 				return ("", redirectResponse.1)
 			} else {
 				throw PulsarClientError.internalError(

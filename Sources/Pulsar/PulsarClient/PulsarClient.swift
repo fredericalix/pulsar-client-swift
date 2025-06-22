@@ -67,6 +67,7 @@ public final actor PulsarClient {
 	var reconnectLimit: Int?
 	var isSecure: Bool
 	let tlsConfiguration: TLSConnection?
+	let authenticationToken: String?
 	/// Callback function called whenever the client gets closed, forcefully or user intended.
 	public let onClosed: ((Error) throws -> Void)?
 
@@ -96,6 +97,7 @@ public final actor PulsarClient {
 		self.reconnectLimit = configuration.reconnectionLimit
 		isSecure = port == 6651
 		self.tlsConfiguration = configuration.tlsConfiguration
+		self.authenticationToken = configuration.authenticationToken
 		self.onClosed = onClosed
 		try await connect(host: initialURL, port: self.port)
 	}
@@ -145,7 +147,7 @@ public final actor PulsarClient {
 			// Store channel if successful
 			connectionPool[host] = channel
 
-			// Wait for the handler’s connectionEstablished
+			// Wait for the handler's connectionEstablished
 			try await handler.connectionEstablished.futureResult.get()
 			logger.info("Successfully connected to \(host):\(port)")
 		} catch {
