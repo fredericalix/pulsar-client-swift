@@ -429,10 +429,12 @@ final class PulsarClientHandler: ChannelInboundHandler, @unchecked Sendable {
 			}
 		}
 		
-		// Check for OAuth token authentication
+		// Check for token authentication (simple token format)
 		if let authToken = client.authenticationToken {
 			connectCommand.authMethodName = "token"
-			connectCommand.authData = authToken.data(using: .utf8) ?? Data()
+			// Pulsar expects the token in format "token:TOKEN_VALUE" 
+			let tokenData = "token:\(authToken)".data(using: .utf8) ?? Data()
+			connectCommand.authData = tokenData
 		}
 		
 		connectCommand.clientVersion = "Pulsar-Client-Swift-1.0.0"
